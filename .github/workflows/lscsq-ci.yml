@@ -25,7 +25,7 @@ jobs:
         export FC=ifort
         export F90=ifort
         export PREFIX=`pwd`
-        cd srcxs
+        cd src
         make
         make install
     - name: CMOD
