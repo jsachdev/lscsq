@@ -28,17 +28,17 @@ jobs:
         cd srcxs
         make
         make install
-    - name: CMOD test
+    - name: CMOD
       run: |
       	cd ci_tests/cmod
         ../../bin/lsc_driver
         nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
-    - name: D3D test
+    - name: D3D
       run: |
       	cd ci_tests/D3D
         ../../bin/lsc_driver
         nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
-    - name: EAST test
+    - name: EAST
       run: |
         cd ci_tests/EAST
         ../../bin/lsc_driver
