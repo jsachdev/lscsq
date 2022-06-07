@@ -31,12 +31,6 @@ jobs:
     - name: CMOD
       run: cd ci_tests/cmod && ../../bin/lsc_driver && nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
     - name: D3D
-      run: |
-      	cd ci_tests/D3D
-        ../../bin/lsc_driver
-        nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/D3D && ../../bin/lsc_driver && nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
     - name: EAST
-      run: |
-        cd ci_tests/EAST
-        ../../bin/lsc_driver
-        nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/EAST && ../../bin/lsc_driver && nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
