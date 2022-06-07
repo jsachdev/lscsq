@@ -1,0 +1,398 @@
+SUBROUTINE lscsq_RayIni(RayIniErr)
+!
+!     Integration is in coords  R     Z     Phi
+!     Starting uses             Rad   Pol   Phi (no B in Rad direction)
+!
+!     Kr       1   **  Bz  Br  **  ** Krad **
+!         =  ----  *            *  *        *
+!     Kz     Bpol  ** -Br  Bz  **  ** Kpol **
+!
+!     Kpar = (KtorBtor + KpolBpol)/B
+!     Krad2 = Kperp2 - (KpolBtor - KtorBpol)**2/B**2
+!     Krad is positive for slow wave, negative for fast.
+!     Bpol has the sign of (Bz(R-Rmaj) - BrZ) in order to keep the
+!     sign of Kr, Kz, Krad straight.  This should work except in
+!     quite pathological shapes.
+
+  use iso_c_binding, only : fp => c_double
+  use lscsq_mod, only : pi, twopi, vc, deg2rad
+  use lscsq_mod, only: y,Epar,Eper,d1,d2,d4,woc2,woc4
+  use lscsq_mod, only: lfast, begin
+  use lscsq_mod, only: pe2min, fghz_now, Exy, izind, rzind
+  use lscsq_mod, only: enpar, enpol, rmax,rmin, zmax, rmaj
+  use lscsq_mod, only: thet0, enth, ngrps, fghz
+  use lscsq_mod, only: pofray, nparry, nperry,psimin,psilim, vpar, lstop
+  use lscsq_mod, only: timery, neofry, pe2fac, rtPsRy, Bthray, Bphray
+  use lscsq_mod, only: cEparIK,delpsi,Powrry,RofRay,zofray
+  use lscsq_mod, only: Ezsq,distry,psimin,detrry
+  use lscsq_mod, only: iray, dtdv, nzones, Rlcfsmin, Rlcfsmax
+  use lscsq_mod, only: sleave, tleave, senter, tenter, psiary
+
+  implicit none
+
+  integer, intent(out) :: RayIniErr
+
+  real(fp) :: Kpar2, Kpol, Krad, Ktor
+  complex, dimension(3) :: zc
+  real(fp), dimension(4) :: Azplr
+
+  real(fp) :: r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
+  integer ::  i
+  integer :: dummyer=0
+  real(fp) :: Bpol,Bpol2,Btot2, lscsq_disprela,                            &
+              det, fast,plas,Qpar,Sig,slow,try,                          &
+              zi1,zi2,zi3,zr1,zr2,zr3, discrimt
+  real(fp) :: CosT,drad,rad,rstar,SinT,t 
+  real(fp) :: SEARCHINCR = 5.0e-03_fp
+
+  integer, save :: izindold
+  real(fp), save :: RzindOld !, sOld, tOld 
+  real(fp):: RzindNew !, RzindCrs, sNew, tNew, sSlope, tSlope
+
+  integer, save :: NinAc
+  integer, parameter :: nRayQt=6
+  real(fp), dimension(nrayqt), save :: rayqt
+  real(fp), dimension(nrayqt), save :: accum
+
+  real(fp) :: re41
+  real(fp) :: Btot, Bphi !, dDdEpar, dDdEparOld, ee, ex, ey, &
+  real(fp) :: Kpar, Kper, kper2 !, Kpar2, Kper2, psie2, qpar, veow2
+
+  T = enth * deg2rad    
+  
+  RayIniErr = 0
+  Rad = Rmax-Rmaj
+  If ( Cos(T) .LT. 0.0 ) Rad=Rmaj-Rmin
+  CosT = Abs(Cos(T))+1.0e-20_fp
+  SinT = Abs(Sin(T))+1.0e-20_fp
+  Rad  = min(Rad/CosT, Zmax/SinT)
+  rstar= -SEARCHINCR
+  drad = abs(rstar)
+
+5     do I=1,10000
+     Rad = Rad - drad
+     r    = Rmaj + Rad*Cos(T)
+     z    =        Rad*Sin(T)
+     Kpol = 1.0e9_fp*enpol*twopi*fghz_now/vc
+     Ktor = 1.0e9_fp*enpar*twopi*fghz_now/vc
+     if (enpar.eq.0.0) then
+        RayIniErr = 2
+        CALL lscsq_LSCwarn(' enpar == 0 in RayIni ')
+        return
+     endif
+     CALL lscsq_plasma2d(r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
+
+     If (pe2.LE.pe2min) cycle    
+
+      Bpol2= Br*Br + Bz*Bz
+      Btot2= Bpol2 + (RBphi/r)**2
+      Bpol = sqrt(Bpol2)
+   
+      Sig  = (r-Rmaj)*Bz - z*Br
+      If (Sig.LT.0.0) Bpol = -Bpol
+      Kpar2 = (Kpol*Bpol+Ktor*RBphi/R)**2/Btot2
+      call lscsq_Eps( r, z, Kpar2, 0.0)
+
+10    Azplr(4) = -(aio/fghz_now**4 + ael)
+      Azplr(3) =  Eper
+      Qpar = Kpar2 - woc2*Eper
+      Azplr(2) = Qpar*(Epar+Eper) +  woc2*Exy**2
+      Azplr(1) = Epar*( Qpar**2 - woc4*Exy**2 )
+ 
+      ! Estimate the roots far from lmc
+      discrimt = Azplr(2)**2-4.0_fp*Azplr(3)*Azplr(1)
+      if ( discrimt .LE. 0.0 ) then
+        discrimt = 0.0
+        RayIniErr= 1
+        CALL lscsq_LSCwarn(' no accessibity found for this ray ')
+        return
+      endif
+ 
+      CALL lscsq_ZPLRCnr(3,Azplr,ZC)
+!     Finds Zeroes of a Polynomial with Laguerre's method if
+!     Real Coefficients
+!     using Numerical Recipes code so we dont depend on IMSL
+      zr1 = REAL(zc(1),kind=fp)
+      zr2 = REAL(zc(2),kind=fp)
+      zr3 = REAL(zc(3),kind=fp)
+      zi1 = AIMAG(zc(1))
+      zi2 = AIMAG(zc(2))
+      zi3 = AIMAG(zc(3))
+
+!     The normal case is that all roots are real, and we see if we can start.
+22    continue
+      plas =  max (zr1,zr2,zr3)
+      fast =  min (zr1,zr2,zr3)
+      slow = -1.0e30_fp 
+      if (zr1.LT.plas .and. zr1.GT.fast) slow = zr1
+      if (zr2.LT.plas .and. zr2.GT.fast) slow = zr2
+      if (zr3.LT.plas .and. zr3.GT.fast) slow = zr3
+      if (slow .EQ. -1.0e+30_fp) cycle    
+      if (lfast .EQ. 1) try = fast
+      if (lfast .EQ. 0) try = slow
+24    if (try .LT. 0.0 ) cycle    
+      try = try - ( Kpol*RBphi/R - Ktor*Bpol )**2/Btot2
+      if ( try .LT. 0.0 ) cycle    
+      try = sqrt(try)
+
+      krad = try
+      if(lfast .EQ. 1) krad = - try
+
+      go to 35
+  enddo
+  RayIniErr =2
+  CALL lscsq_LSCwarn(' cant find a starting point for this ray')
+  return
+35    continue
+
+!  write(*,*) 'r=',r,'z=',z  
+
+  y(1)  =  r
+  y(2)  =  z
+  y(3)  =  0.0
+  y(4)  =  ( Krad*Bz + Kpol*Br ) / Bpol
+  y(5)  =  (-Krad*Br + Kpol*Bz ) / Bpol
+  y(6)  =  Ktor*r
+  y(7)  =  0.0
+  ! to begin the time as fn of distance
+  y(8) = begin
+  det = lscsq_DispRela(y(1),y(2),y(4),y(5),y(6))
+
+  call lscsq_ftion(DummyEr)
+!     only to initialize dkper & wdddw for damping calculation
+
+  Kper=sqrt(abs(Y(4)**2+Y(5)**2+(Y(6)/Y(1))**2-Kpar2))
+
+  RzindOld = (Psi-PsiMin)/DelPsi + 1.5_fp
+  RE41 = RzindOld
+  IzindOld = int(RE41)
+!  izindold = minloc(abs(psiary-psi),1)
+ 
+  izind(1,iray) = IzindOld
+  rzind(1,iray) = RzindOld
+  PowrRy(1,iray)   = 1.0_fp
+  RofRay(1,iray)   = y(1)
+  ZofRay(1,iray)   = y(2)
+  PofRay(1,iray)   = y(3)
+  NparRy(1,iray)   = sqrt(Kpar2)/sqrt(woc2)
+  NperRy(1,iray)   = Kper/sqrt(woc2)
+  rtPsRy(1,iray)   = sqrt((psi-psimin)/(psilim-psimin))
+  TimeRy(1,iray)   = y(7)
+  DistRy(1,iray)   = y(8)
+  NeofRy(1,iray)   = pe2/Pe2Fac*1.0e+14_fp
+  BthRay(1,iray)   = sqrt(Br**2+Bz**2)
+  BphRay(1,iray)   = RBphi/RofRay(1,iray)
+  DetrRy(1,iray)   = det/max(abs(d1),abs(d2),abs(d4))
+  tenter(1,iray)   = y(7)
+  senter(1,iray)   = y(8)
+
+  ! The quantities to be collected (RayQt) are averaged over the
+  ! zone by summing into accum, dividing by NinAc. This clears.
+  accum(1:nrayqt) = 0.0
+  rayqt(1:nrayqt) = 0.0
+  NinAc = 0
+  dtdV  = 0.0
+
+end subroutine lscsq_rayini
+!                                                                      |
+SUBROUTINE lscsq_zplrcnr (degree, coefr, zeroc)
+
+  use iso_c_binding, only : fp => c_double
+  implicit none
+
+!     finds Zeros of Polynomials with Laguerre's method assuming
+!     Real Coefficients by calling a routine from
+!     Numerical Recipes.
+!     The calling convention is set up to look like IMSL CALL lscsq_ZPLRC.
+!     f(x) = 0 = coefr(1) + coefr(2)*x + coefr(3)*x**2 ...etc
+  integer :: degree, i, polish
+  integer, parameter :: degmax=10
+  real(fp), dimension(degree+1) :: coefr
+  complex, dimension(degmax+1) :: coefc
+  complex, dimension(degree) :: zeroc
+
+  ! zroots needs complex coef's
+  do i = 1, degree+1
+     coefc(i) = cmplx ( coefr(i) , 0.0 )
+  enddo
+ 
+  polish = 1
+  CALL lscsq_zrootsnr ( coefc, degree, zeroc, polish )
+ 
+end subroutine lscsq_zplrcnr
+!
+!     ------------------------------------------------------------------
+!
+SUBROUTINE lscsq_laguernr ( coef, degree, x, epsilon, polish )
+
+  use iso_c_binding, only : fp => c_double
+  implicit none
+
+!     Given the  DEGREE  and  DEGREE+1  complex COEF's of the polynomial
+!     Sum COEF(i) X**(i-1) and given  epsilon the desired fractional
+!     accuracy, and given a complex value  X , this routine improves  X
+!     by Laguerre's method until it converges to a root of the given
+!     polynomial.  For normal use  POLISH  should be input as 0 (false).
+!     When  POLISH  is 1 (true) the routine ignores  EPSILON  and
+!     instead attempts to improve  X  (assumed to be a good initial
+!     guess) to the achievable roundoff limit.
+!     Ref: Numerical Recipes in Fortran, page 264.
+ 
+  integer :: degree, iter, j, polish
+  integer :: maxit=100
+  complex :: czero=(0.0_fp,0.0_fp)
+
+  complex :: coef(degree+1)
+  complex :: x, dx, x1,b,d,f,g,h,sq,gp,gm,g2
+  real(fp) :: epss = 6.0e-7
+
+  real(fp) :: epsilon, err, abx, cdx
+
+  do iter = 1, MAXIT
+     b   = coef ( degree+1 )
+     err =  abs ( b )
+     d   = CZERO
+     f   = CZERO
+     abx =  abs ( x )
+!                                       Efficient computation of the
+!                                       polynomial and its first 2
+!                                       derivatives
+     do j = degree, 1, -1
+        f   = x*f + d
+        d   = x*d + b
+        b   = x*b + coef ( j )
+        err =  abs ( b ) + abx * err
+     enddo
+!                                       Estimate of roundoff error in
+!                                       evaluating polynomial
+     err = EPSS * err
+     if (  abs ( b ) .LE. err ) then
+        return
+     ! The generic case: use Laguerre's formula
+     else
+        g  = d / b
+        g2 = g * g
+        h  = g2 - 2.0_fp * f / b
+        sq =  sqrt ( (degree-1) * (degree*h - g2) )
+        gp = g + sq
+        gm = g - sq
+        if (  abs (gp) .LT.  abs (gm) ) gp = gm
+        dx = degree / gp
+     endif
+     x1    = x - dx
+     if ( x .EQ. x1 ) return
+     x     = x1
+     cdx   =  abs ( dx )
+     if ( polish .EQ. 0 ) then
+        if ( cdx .LE. epsilon* abs ( x ) ) return
+     endif
+  enddo     
+ 
+  CALL lscsq_LSCstop( ' too many iterations in LAGUER root finder ')
+
+end subroutine lscsq_laguernr 
+!
+!     ------------------------------------------------------------------
+!
+subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
+
+  use iso_c_binding, only : fp => c_double
+  implicit none
+
+!!!!!!     EXTERNAL laguernr
+!     Given the DEGREE and the  DEGREE+1  complex COEF's of the polynomial
+!     Sum COEF(i) x**(i-1) this routine successively calls LAGUER and
+!     finds all DEGREE complex ROOTS.  The integer variable POLISH
+!     should be input as 1 (true) if polishing is desired, of 0 (false)
+!     if the roots will be subsequently polished by other means.
+!     Ref: Numerical Recipes in Fortran, page 265.
+!
+      INTEGER degree, i, j, jj, polish
+  integer, parameter :: maxdegre=101
+  real(fp) :: epsilon = 1.0e-6
+  complex :: coef(degree+1), x, b, c, roots(degree), defl(MAXDEGRE)
+!
+!                                       Copy coef's for successive deflation
+
+  defl(1:degree+1) = coef(1:degree+1)
+!
+  do j = degree, 1, -1
+     ! Start at 0 to favor smallest remaining root
+     x = CMPLX ( 0.0, 0.0 )
+     CALL lscsq_laguernr ( defl, j, x, EPSILON, 0 )
+     if (abs(AIMAG(x)).LE.2.*EPSILON**2*abs(REAL(x,kind=fp)))       &
+            x = CMPLX(REAL(x,kind=fp),0.0)
+     roots( j ) = x
+     b = defl( j+1 )
+     ! Forward deflation
+     do jj = j, 1, -1
+        c = defl(jj)
+        defl(jj) = b
+        b = x*b + c
+     enddo
+  enddo
+ 
+  if ( polish .EQ. 1 ) then
+     ! Polish roots using undeflated coefs
+     do j = 1, degree
+        CALL lscsq_laguernr ( coef, degree, roots(j), EPSILON, 1 )
+     enddo
+  endif
+ 
+  ! Sort roots by real part by straight insertion
+  do j = 2, degree
+     x = roots (j)
+     do i = j-1, 1, -1
+        if ( REAL( roots(i),kind=fp ) .LE. REAL( x,kind=fp ) ) go to 10
+        roots ( i+1 ) = roots ( i)
+     enddo
+     i=0
+10    roots ( i+1 ) = x
+  enddo        
+
+end subroutine lscsq_zrootsnr 
+!                                                                      |
+!
+SUBROUTINE lscsq_setfreq(indx)
+!  (DMC Mar 2011: reset frequency; can be different for each ray, now)
+  use iso_c_binding, only : fp => c_double
+  use lscsq_mod, only : pi, twopi, vc
+  use lscsq_mod, only : fghz_now, omega, woc2, woc4
+  use lscsq_mod, only: ngrps, fghz, powers
+  implicit none
+
+  integer, intent(in) :: indx  ! frequency index [1:ngrps] or 0 or -1
+!
+!        if indx.GT.0 set the frequency for the indicated group
+!        if indx.EQ.0 set frequency for group with maximum power
+!        if indx.LT.0 set the frequency to zero
+!
+!        also set associated variables
+!
+!------------------------
+  real(fp) :: pmax
+  integer :: indx_maxp,igrp
+!------------------------
+
+  IF((indx.lt.0).OR.(indx.gt.nGrps)) then
+     fghz_now = 0.0
+  ELSE IF(indx.eq.0) then
+     pmax=1
+     indx_maxp=1
+     DO igrp=2,nGrps
+        if(powers(igrp).gt.pmax) then
+           pmax=powers(igrp)
+           indx_maxp=igrp
+        endif
+     ENDDO
+     fghz_now = fghz(indx_maxp)
+  ELSE
+     fghz_now = fghz(indx)
+  ENDIF
+
+  omega=  1.0e09_fp * twopi*fghz_now 
+  woc2 = (omega/vc)**2
+  woc4 =  woc2**2
+
+end subroutine lscsq_setfreq
+!

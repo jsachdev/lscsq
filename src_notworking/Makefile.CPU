@@ -1,0 +1,139 @@
+# ------------------------------------------------
+# compiler retrieved from environment
+# make -f <makefile> 
+# Copy *.mod, *.h , *.i files to <path>/include 
+
+# to compile, need to load the following modules:
+# compiler: either intel or gcc
+# netcdf
+
+# Name of the program
+EXE = lsc_driver
+LIBNAME= lscsq
+
+# ------------------------------------------------
+# LSCSQ only requires a FORTRAN compiler and  the C and FORTAN netCDF libraries
+# Compiler: either INTEL ifort, NVIDIA nvfortran, or gfortran
+#
+# One can specify the compiler by setting the F90 environment variable,
+# especially if it is a different compiler than ifort, nvfortran, and gfortran:
+#
+#     F90=pgf90 make
+#
+# On the PPPL cluster: simply load the appropriate modules
+#         module load intel netcdf-c netcdf-fortran
+
+
+# Name of the program
+EXE = lsc_driver
+LIBNAME= lscsq
+
+ifndef F90
+# If the variable F90 is not define, look for a valid Fortran compiler
+# starting with Intel ifort, then Nvidia nvfortran, then gfortran
+   ifneq (, $(shell which ifort))
+      FC := ifort
+      $(info "Using the INTEL ifort compiler")
+   else ifeq (, $(shell which nvfortran))
+      FC := nvfortran
+      $(info "Using the NVIDIA nvhpc compiler")
+   else ifeq (, $(shell which pgf90))
+      FC := pgf90
+      $(info "Using the NVIDIA/PGI pgf90 compiler")
+   else ifeq (, $(shell which gfortran))
+      FC := gfortran
+      $(info "Using the GNU gfortran compiler")
+   else
+      $(error "!!! Cannot find a valid FORTRAN compiler")
+   endif
+else
+   FC := $(F90)
+   $(info "Using F90 variable")
+endif
+
+ ifneq (,$(findstring nvfortran, $(FC)))
+        CFLAGS  := -c -O
+        DCFLAGS := -c -g
+        FFLAGS  := -c -g -O3 
+        DFFLAGS := -c -g -O0
+	
+else ifneq (,$(findstring pgf90, $(FC)))
+        CFLAGS  := -O
+        DCFLAGS := -g
+        FFLAGS  := -g -O3 -Kieee -Minfo=all
+        DFFLAGS := -g -O0 -pg -Kieee -Minfo=all 
+       
+else ifneq (,$(findstring gfortran, $(FC)))
+	CSPECIAL= -fno-align-commons -fbounds-check -fbacktrace -fPIC -fcheck=pointer
+        CFLAGS  := -O
+        DCFLAGS := -g
+        FFLAGS  := -g -std=f2003 -O2 -cpp 
+        DFFLAGS := -g -O2 -Wall -std=f2003 -cpp 
+	
+
+else
+        CFLAGS  := -O
+        DCFLAGS := -g
+        FFLAGS  := -O
+        DFFLAGS := -g
+endif
+
+ifdef DEBUG
+	FFLAGS := $(DFFLAGS)
+	CFLAGS := $(DCFLAGS)
+endif
+
+
+# compile all .F90 / .c  files in directory
+ALL_F := $(subst .F90, .o, $(wildcard *.F90))
+ALL_C := $(subst .c,.o, $(wildcard *.c))
+M_OBJ := driver.o
+OBJECTS :=  lscsq_types_mod.o lscsq_mod.o  raytrace.o grap.o  wr2tsc.o  plasma1d.o   grapgrd.o nml2lsc.o\
+	   fits.o plasejv.o  \
+           grids.o matr.o power.o raystore.o  integrator.o  ql.o  \
+           cycle.o fe.o jrf.o rayini.o PredcLSC.o lscsq_doray.o lscsq_main.o  
+
+
+ifdef NETCDF_FORTRAN_HOME
+	NCDIR = $(NETCDF_FORTRAN_HOME)
+else ifdef NETCDF_DIR
+	NCDIR = $(NETCDF_DIR)
+else ifdef NETCDFDIR
+	NCDIR = $(NETCDFDIR)
+else
+# The default is that netcdf was installed using "apt-get install" or similar package manager for Linux,
+# in whuch case the include files will end up in /usr/lib/x86_64-linux-gnu/include
+        NCDIR:=/usr/lib/x86_64-linux-gnu
+endif
+
+# Includes, F90 Use files
+INCLUDES = -I./ -I/usr/include -I$(NCDIR)/include
+	
+L_NETCDF  = -L$(NCDIR)/lib64 -L$(NCDIR)/lib -lnetcdff -lnetcdf 
+
+
+
+%.o: %.F90
+	$(FC) $(FFLAGS) -c $(INCLUDES) -o $@ $<
+
+%.o: %.f
+	$(FC) $(FFLAGS) -c $(INCLUDES) -o $@ $<
+
+%.o: %.F
+	$(FC) $(FFLAGS) -c $(INCLUDES) -o $@ $<
+
+all:  $(EXE) lib
+
+lib: lib$(LIBNAME).a
+
+$(EXE): $(OBJECTS) $(M_OBJ)
+	$(NICE) $(FC) $(FFLAGS)  -o $@ $^ $(L_NETCDF) $(L_MKL)
+	chmod 755 $(EXE)
+
+lib$(LIBNAME).a: $(OBJECTS)
+	ar rcs $@ $^
+
+clean:
+	rm -f *.o $(EXE) *.mod *.a
+
+.PHONY: all driver lib clean
