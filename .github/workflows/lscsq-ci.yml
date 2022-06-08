@@ -3,10 +3,8 @@ name: lscsq CI
 on: [push]
 
 jobs:
-  build:
-
+  lscsq-ci:
     runs-on: ubuntu-20.04
-
     steps:
     - uses: actions/checkout@v2
     - name: configure
@@ -19,7 +17,7 @@ jobs:
         sudo apt-get install -y intel-oneapi-common-vars
         sudo apt-get install -y intel-oneapi-compiler-fortran
         sudo apt-get install -y libnetcdf-dev libnetcdff-dev
-        sudo apt-get install -y nccmp
+        sudo add-apt-repository ppa:remik-ziemlinski/nccmp && sudo apt-get update && sudo apt-get install -y nccmp
     - name: build
       run: |
         export FC=ifort
