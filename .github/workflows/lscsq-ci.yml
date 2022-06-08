@@ -17,7 +17,6 @@ jobs:
         sudo apt-get install -y intel-oneapi-common-vars
         sudo apt-get install -y intel-oneapi-compiler-fortran
         sudo apt-get install -y libnetcdf-dev libnetcdff-dev
-        sudo add-apt-repository ppa:remik-ziemlinski/nccmp && sudo apt-get update && sudo apt-get install -y nccmp
     - name: build
       run: |
         export FC=ifort
@@ -27,8 +26,8 @@ jobs:
         make
         make install
     - name: CMOD
-      run: cd ci_tests/cmod && ../../bin/lsc_driver && nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/cmod && ../../bin/lsc_driver && diff lsc_out.cdf lsc_ref.cdf
     - name: D3D
-      run: cd ci_tests/D3D && ../../bin/lsc_driver && nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/D3D && ../../bin/lsc_driver && diff lsc_out.cdf lsc_ref.cdf
     - name: EAST
-      run: cd ci_tests/EAST && ../../bin/lsc_driver && nccmp -dmgfsS lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/EAST && ../../bin/lsc_driver && diff lsc_out.cdf lsc_ref.cdf
