@@ -19,6 +19,7 @@ jobs:
         sudo apt-get install -y libnetcdf-dev libnetcdff-dev
     - name: build
       run: |
+        source /opt/intel/oneapi/setvars.sh
         export FC=ifort
         export F90=ifort
         export PREFIX=`pwd`
