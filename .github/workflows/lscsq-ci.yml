@@ -17,10 +17,11 @@ jobs:
         export F90=gfortran
         export PREFIX=`pwd`
         export PATH=$PREFIX/bin:$PATH
+        pushd
         cd src
         make
         make install
-        cd ..
+        popd
         which lsc_driver
     - name: CMOD
       run: cd ci_tests/cmod && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
