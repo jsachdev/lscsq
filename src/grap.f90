@@ -53,7 +53,7 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
       else if(jval.GT. nz - 2)then
          jval = nz - 2
       endif
-      if((frstcall.EQ.0).and.(ival.EQ.isave .and. jval.EQ.jsave .and. isw.EQ.0)) go to 200
+  !    if((frstcall.EQ.0).and.(ival.EQ.isave .and. jval.EQ.jsave .and. isw.EQ.0)) go to 200
       frstcall = 0
       isave = ival
       jsave = jval

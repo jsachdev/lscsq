@@ -402,17 +402,16 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: rmax,rmaj,nrays, nzones, npsij, ind_ray
   use lscsq_mod, only: npols, ntors, power, npar, ntor, npol, nth
-  use lscsq_mod, only: iedc,iendry,iraytrsi, i1stcall
-  use lscsq_mod, only: ntscscrn, nant, power_inp
+  use lscsq_mod, only: iendry,iraytrsi, i1stcall
+  use lscsq_mod, only: nant, power_inp
   use lscsq_mod, only: ierror
-  use lscsq_mod, only: totpwr,edcinp, diffujrf
-  use lscsq_mod, only: doxcam,iraytrsi, Edcvec
+  use lscsq_mod, only: totpwr, diffujrf
+  use lscsq_mod, only: iraytrsi, Edcvec
   use lscsq_mod, only: ok_ray, nz_ind, ivind
   use lscsq_mod, only: lh_inp, lh_out
   use lscsq_mod, only: dql, fe, dfdv
   use lscsq_mod, only: powers_ant, centers_ant, widths_ant, Spec_ant, ntor_ant
   use lscsq_mod, only: spec, powers, centers, widths, nant, npeaks
-!  use lscsq_mod, only: powtsc, curtsc, dJdE,dlJdlE
   implicit none
 
   character(len=70) :: ErrMsg
@@ -422,8 +421,6 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
 
   integer, intent(in) :: iRayTrsx    ! 0 use old ray data, and old f_e(v); use new E_dc for the current
                                      ! 1 calculate new rays, and f_e(v), from new equilibrium
-                                     ! 2 use old ray data, but calculate new f_e(v)
-                                     !   taking account of new n_e and T_e, use new E_dc for the current
  
   integer, intent(out) :: iErrorx    ! 0 LSC finishes without errors; 1 (or more) errors found
                                      !-1 LSC found an error; calling program can keep going
@@ -456,10 +453,16 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
   nWarning = 0
   iEndRy = 0
 
-  if(iRayTrsi .EQ. 0 .and. i1stcall .EQ. 1) iRayTrsi =  2
+!  if(iRayTrsi .EQ. 0 .and. i1stcall .EQ. 1) iRayTrsi =  2
   ! if iRayTrsi=0 and firstcall, then make iRayTrsi=2 so we find f_e etc
 
-  if(iRayTrsi .ne. 0 .or. i1stcall .EQ. 1)  then
+  ! fmp - I think we should do the initialization of constants only
+  ! once, then store in types and use it later. The vpar grid is normalized and
+  ! can also be calculated the first time LH is initialized.
+  ! Note that the subroutine below calls a mix of initializations, some of which
+  ! need to be done everytime the equilibrium and the profiles change, 
+  ! thus at each LH time step in TRANSP
+  if(iRayTrsi .eq. 1 .or. i1stcall .EQ. 1)  then
 !     ifirst = 0
      CALL lscsq_ValInit     ! initialization routines for quasilinear calculations
                           ! -- needed after each TSC read
@@ -473,7 +476,7 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
      endif
   endif
  
-  if(iRayTrsi.eq.1 .or. iRayTrsi.eq.2)  then
+  if(iRayTrsi.eq.1)  then
      do i=1,nant
        TotPwr = power_inp(i)
        do j=1,npeaks(i)
@@ -496,7 +499,7 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
   endif
   
 
-  if (iRayTrsi.ne.0) then
+  if (iRayTrsi.eq.1) then
      do i=1,nant
         ntor = ntor_ant(:,i)
         i1 = 1+(i-1)*ntors*npols*nth
@@ -522,6 +525,9 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
         iErrorx = iError
         return
      endif
+     ! fmp - this is only for the output, can probably be removed. It stores
+     ! the last useful zone for plotting the arrays, but this check can be done
+     ! in any script for plotting.
      do j=1,nrays
         nzThisRay=nzones
         do i=1,nzones
@@ -533,7 +539,7 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
      enddo
   endif
 
-  if (iRayTrsi.ne.0) then
+  if (iRayTrsi.eq.1) then
      call lscsq_RampPwr
      if (iError .GT. 0) then
         call lscsq_LSCtrace (' RampPwr')
@@ -543,6 +549,7 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
      call lscsq_PdepCalc    ! compute Prf
   endif
 
+  ! if iraytr=0, only the current is calculated
   call lscsq_JdepCalc
 
   if (iError .GT. 0) then
@@ -559,7 +566,10 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
      return
   endif
 
-  if (diffujrf.gt.0.0) CALL lscsq_SmoJandP(Rmax-Rmaj)
+  ! fmp - I am going to comment this out and remove the subroutines. They
+  ! haven't been verified. We can put them back after teh code has been cleaned
+  ! and parallelized.
+!  if (diffujrf.gt.0.0) CALL lscsq_SmoJandP(Rmax-Rmaj)
 
   call lscsq_output(PwrFnd, JrfFnd, Pqlfnd)
   write(*,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe10.2) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
@@ -590,30 +600,19 @@ subroutine lscsq_SpecInit
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : zero, one
-  use lscsq_mod, only: ngrpdim, couplers
   use lscsq_mod, only: ntor, npol, npar, spec, ntors, npols,ngrps 
   use lscsq_mod, only: ngrps
-  use lscsq_mod, only: powers, centers, widths, fghz, phasedeg
+  use lscsq_mod, only: powers, centers, widths, fghz
   use lscsq_mod, only: nrays, nzones
-  use lscsq_mod, only: nparmin, nparmax, npolmin, npolmax, dobram, iraytrsi
-  use lscsq_mod, only: turnnegs, power, nslices, i1stcall
+  use lscsq_mod, only: nparmin, nparmax, npolmin, npolmax, iraytrsi
+  use lscsq_mod, only: turnnegs, power, i1stcall
   implicit none
 
-  integer, save :: oldNtors, oldNpols, oldnGrps, oldNslic, oldDoBram
-! real(fp), save :: oldPowrs(ngrps),oldCents(ngrps),oldWidts(ngrps)
-! real(fp), save :: oldPhsDg(ngrps),oldFreqs(ngrps)
-  real(fp) :: oldPowrs(ngrps),oldCents(ngrps),oldWidts(ngrps)
-  real(fp) :: oldPhsDg(ngrps),oldFreqs(ngrps)
-!  integer, save :: infreq_diff    ! #of distinct frequencies
-
-! character(len=8), SAVE :: oldCoupl(ngrps)
-  character(len=8) :: oldCoupl(ngrps)
   character(len=80) :: pline
   character(len=40) :: MyString
   integer :: igrup, jgrup, i, iry, ity, it0, ipy, imaxp
   integer :: ilim1,ilim2
   integer :: nRyPrGr
-!  integer :: ifirst =1
   real(fp) :: RayGroup
   real(fp), dimension(ngrps) :: GrpNorm,FrqPows
 !
@@ -639,52 +638,14 @@ subroutine lscsq_SpecInit
   integer :: iymjr=2
   integer :: iymnr=1
 
-  ! If this is not the first call, then test to see if any of the parameters
-  ! of the spectrum have changed.
-  ! If stable, then return to avoid another calculation, which in brambJES is time consuming.
-
-  if (i1stcall .EQ. 0 ) then
-     i = 0
-     do igrup=1,nGrps
-        if( oldFreqs(igrup) .ne. fghz    (igrup)) i=i+1
-        if( oldPowrs(igrup) .ne. powers  (igrup)) i=i+1
-        if( oldCents(igrup) .ne. centers (igrup)) i=i+1
-        if( oldWidts(igrup) .ne. widths  (igrup)) i=i+1
-        if( oldPhsDg(igrup) .ne. phaseDeg(igrup)) i=i+1
-        if( oldCoupl(igrup) .ne. couplers(igrup)) i=i+1
-     enddo
-     if(oldNtors.ne.ntors .or. oldnGrps.ne.nGrps .or. oldNpols.ne.npols &
-        .or. oldNslic.ne.nslices .or. oldDoBram.ne.DoBram) i=i+1
- 
-     if (i .EQ. 0) return
- 
-     iRayTrsi = 1
-  else
-!     ifirst = 0
-     oldFreqs(1:ngrps) = -99
-     oldPowrs(1:ngrps) = -99
-     oldCents(1:ngrps) = -99
-     oldWidts(1:ngrps) = -99
-     oldPhsDg(1:ngrps) = -99
-     oldCoupl(1:ngrps) = ' '
-     oldNtors = -99
-     oldNpols = -99
-     oldnGrps = -99
-     oldNslic = -99
-     oldDoBram= -99
- 
-     !  DMC Mar 2011: count # of distinct frequencies
-     !  if they are nearly the same they count as the same
-!     CALL lscsq_freq_count(infreq_diff)
-  endif
-
   ! Make the spectrum in poloidal number
   npol(1) = 0.5_fp*(npolmax+npolmin)
   if (npols.GT.1) call lscsq_ugrid(npol,npols,npolmin,npolmax)
 
   !     ........................................................................
   ! If not doing a Brambilla calculation, make a model spectrum using gaussian form.
-  IF(DoBram .EQ. 0) then
+  ! at this time, only option=0 is available, may want to remove this if
+!  IF(DoBram .EQ. 0) then
      CALL lscsq_ugridEXC (ntor, ntors, nparmin, nparmax, EXCLUDED)
      !  this is the traditional (single frequency) LSC code.  It can create
      !  some nll values with very low associated power, which likely results
@@ -706,7 +667,7 @@ subroutine lscsq_SpecInit
         enddo
      enddo
      spec = spec/sum(spec)
-  endif
+!  endif
 
   ! It can happen that there are two rays at the same n_-par. Check and report
   do i = 2, ntors
@@ -715,21 +676,6 @@ subroutine lscsq_SpecInit
      CALL lscsq_LSCwarn(MyString)
   enddo
  
-  ! Prepare to return by saving old values
-  do igrup = 1,nGrps
-     oldFreqs(igrup) = fghz(igrup)
-     oldPowrs(igrup) = powers(igrup)
-     oldCents(igrup) = centers(igrup)
-     oldWidts(igrup) = widths(igrup)
-     oldPhsDg(igrup) = phaseDeg(igrup)
-     oldCoupl(igrup) = couplers(igrup)
-  enddo
-  oldNtors = ntors
-  oldNpols = npols
-  oldnGrps = nGrps
-  oldNslic = Nslices
-  oldDoBram= DoBram
-!
 600 format(/,'  Ray Index     n-tor  Power(W)  indx_freq')
 601 format(1x,     8x,i2,1x,1pe9.2,1x,1pe9.2,4x,i2  )
  
@@ -758,11 +704,11 @@ subroutine lscsq_ValInit
   use lscsq_mod, only : dql, nv, npsi
   implicit none
 
-  CALL lscsq_MiscInit    !  doesn't fit elsewhere
+!  CALL lscsq_MiscInit    !  doesn't fit elsewhere
   CALL lscsq_MkGrids     !  set up velocity, psi grids needed for quasilinear calculations
   CALL lscsq_ProfInit    !  interpolate Ne, Ni, Te, Ti to the PsiAry grid
   CALL lscsq_FeInit      !  compute constants needed for solution of Fe ....
-  CALL lscsq_DqlInit     !  and for solution of Dql
+!  CALL lscsq_DqlInit     !  and for solution of Dql
   dql(1:nv,1:npsi,1:2) = 0.0
 
 end subroutine lscsq_ValInit

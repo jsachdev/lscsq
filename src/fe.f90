@@ -23,7 +23,7 @@ SUBROUTINE lscsq_FeCalc
      CALL lscsq_FePlus(fe(1:nv,ip,iitr), nuColl(1:nv, ip), Dcoll(1:nv,ip), Dql(1:nv,ip,2), Vpar, ivZero)
      ! solve for negative velocity
      CALL lscsq_FeMinus(fe(1:nv,ip,iitr), nuColl(1:nv,ip), Dcoll(1:nv,ip), Dql(1:nv,ip,2), Vpar, ivZero)
-   enddo
+  enddo
 
 end subroutine lscsq_FeCalc
 !     -----------------------------------------------------------------
@@ -31,7 +31,8 @@ subroutine lscsq_FeMkNorm
 !     determine normalized value of fe at ivZero vs psi
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: npsi,tailneps,tailteps
-  use lscsq_mod, only: vtherm, fe0, fenorm, neary
+  use lscsq_mod, only: vtherm, fenorm, neary
+  use lscsq_mod, only: lh_const
   implicit none
 
   integer :: ip
@@ -39,7 +40,7 @@ subroutine lscsq_FeMkNorm
 
   TailFact = (1.0_fp+TailNeps*sqrt(TailTeps))/(1.0_fp+TailNeps)
   do ip = 1, npsi
-     FeNorm(ip) = fe0*NeAry(ip)/Vtherm(ip)*TailFact
+     FeNorm(ip) = lh_const%fe0*NeAry(ip)/Vtherm(ip)*TailFact
   enddo
 
 end subroutine lscsq_FeMkNorm
@@ -52,13 +53,14 @@ subroutine lscsq_FePlus(fe, nuCollx, Dcollx, Dqlx, Vpar, ivZero)
   use lscsq_mod, only: nv
   implicit none
 
-  integer :: ivZero, iv
+  integer :: iv
   real(fp):: RsltMin
   real(fp), dimension(nv), intent(inout) :: fe
   real(fp), dimension(nv), intent(in) :: nucollx
   real(fp), dimension(nv), intent(in) :: Dcollx
   real(fp), dimension(nv), intent(in) :: Dqlx
   real(fp), dimension(nv), intent(in) :: vpar
+  integer, intent(in) :: ivZero 
   real(fp) :: expmax=100.0_fp
   real(fp), dimension(nv)  :: lgfe
 
@@ -97,7 +99,8 @@ subroutine lscsq_FeMinus(fe, nuCollx, Dcollx, Dqlx, Vpar, ivZero)
   real(fp), dimension(nv), intent(in) :: Dcollx
   real(fp), dimension(nv), intent(in) :: Dqlx
   real(fp), dimension(nv), intent(in) :: vpar
-  integer :: ivZero, iv
+  integer, intent(in) :: ivZero 
+  integer :: iv
   real(fp):: RsltMin
   real(fp), dimension(nv) :: lgFe
 !                                       solve for fe for negative velocity
@@ -150,25 +153,12 @@ subroutine lscsq_FeInit
   use iso_c_binding, only : fp => c_double
   implicit none
 
-  integer :: ifirstcall = 1
-
-  if (ifirstcall.EQ.1) then
-     ifirstcall = 0
-     CALL lscsq_FeConst
-  endif
-
-  CALL lscsq_FeArrays
-
-end subroutine lscsq_FeInit
- 
-!     -----------------------------------------------------------------
-subroutine lscsq_FeArrays
-
   CALL lscsq_mkvth     ! generate thermal velocity array (vthermal AND Vperpsq vs psi)
   CALL lscsq_FeMkNorm  ! array of normalization for Fe (Fe(v = 0, psi))
   CALL lscsq_Fecvecs   ! initialize collisional vectors
 
-end subroutine lscsq_FeArrays
+end subroutine lscsq_FeInit
+ 
 !     -----------------------------------------------------------------
 SUBROUTINE lscsq_FeCvecs
   !    initialize collisional diffusion and drag terms Dcoll, nuColl with velocity bins and psi bins.
@@ -176,7 +166,7 @@ SUBROUTINE lscsq_FeCvecs
   use lscsq_mod, only: tailteps, tailneps, tailpeps, tailvtrn
   use lscsq_mod, only: nu0psi, nucoll, dcoll, vtherm
   use lscsq_mod, only: neary,lnlary,betzary, npsi, nv, vpar
-  use lscsq_mod, only: dcollnorm, nunorm
+  use lscsq_mod, only: lh_const             
   implicit none
 
   INTEGER :: ip, iv
@@ -204,8 +194,8 @@ SUBROUTINE lscsq_FeCvecs
         harg = 1.0_fp + vpnorm**2
         hvpar = 1.0_fp/(harg*sqrt(harg))
 
-        Dcoll(iv, ip) = DcollNorm * nu0psi(ip) * vthsq * hvpar * LnlAry(ip) * BetZAry(ip)
-        nuColl(iv, ip) = nuNorm * nu0psi(ip) * hvpar * v12 * LnlAry(ip) * BetZAry(ip)
+        Dcoll(iv, ip) = lh_const%DcollNorm * nu0psi(ip) * vthsq * hvpar * LnlAry(ip) * BetZAry(ip)
+        nuColl(iv, ip) = lh_const%nuNorm * nu0psi(ip) * hvpar * v12 * LnlAry(ip) * BetZAry(ip)
  
         if ( TailPeps .GT. 0.0 .and. abs(vpar(iv)) .GT. TransVel) then
            Dcoll (iv,ip) = Dcoll(iv,ip) * TailT12
@@ -218,13 +208,14 @@ end subroutine lscsq_FeCvecs
 !     -----------------------------------------------------------------
 subroutine lscsq_mkVth
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi, teary,vtherm,vperpsq,vthnorm
+  use lscsq_mod, only: npsi, teary,vtherm,vperpsq
+  use lscsq_mod, only: lh_const
   implicit none
 
   integer :: ip
 
   do ip = 1, npsi
-     Vtherm(ip) = VthNorm*sqrt(TeAry(ip))
+     Vtherm(ip) = lh_const%VthNorm*sqrt(TeAry(ip))
      VperpSq(ip) = Vtherm(ip)**2
   enddo
 
@@ -360,47 +351,6 @@ subroutine lscsq_FeMaxw(iipsi)
     endif
 
 end subroutine lscsq_FeMaxw
-!     -----------------------------------------------------------------
-subroutine lscsq_FeConst
-!                                       constants needed in solution of fe
-!     In the Valeo-Eder paper
-!     \nu_0 = \beta_z lnLambda 4 \pi e^4 n /( m^2 v_t^3)
-!
-!     where \beta_z is of order 1/2 and is about (1+Z)/5
-!     where lnLambda is the Coulomb logarithm
-!     so
-!     \nu_0 = \beta_z lnLambda \cdot
-!             TWOPI/5  1.6^4  3.0^1 / 9.11^2   n_{13}/(v/c)^3
-
-  use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : pi, twopi, vc, me_g, me_Kg, zel
-  use lscsq_mod, only : zkeV2eV, zmtocm, zcm3tom3
-  use lscsq_mod, only: vthnorm,fe0,nu0,pwrnorm,nunorm,dcollnorm
-  implicit none
-
-  VthNorm = sqrt(1.6e-12_fp*zkev2eV/me_g)/(vc*zmtocm)       
-
-  fe0 = 1.0_fp/sqrt(twopi)
-  nu0 = 4.0_fp*pi*zel**4/me_g**2
-
-  PwrNorm = 1.0e6_fp*me_Kg*vc**2
-
-!     normalization for computation of QL power deposition
-!     (see files [FW]power.F, subroutine RFheat[Ele])
-!     The heating rate is:
-!     3/2 n dT/dt = \int S_w \p \eps/\p v dv^3
-!     where S_w is the wave induced flux in velocity space, and
-!     where \eps is the energy per particle  == 1/2 mv^2
-!     S_w = - D_{QL} \cdot \p f/\p v
-!     so heating  = \int D_{QL} mv df/dv dv^1 (integrating over v-perps)
-!                 = \int mc^2 (D_{QL} v d(cf)/dv dv (normalizing D and v to c)
-!     The expression for PwrNorm gives mc^2 and then a conversion to m^-3
-!     because f has density in it at cm-3 units.
- 
-  nuNorm =    zcm3tom3*nu0/vc**3
-  DcollNorm = nuNorm
-
-end subroutine lscsq_Feconst
 ! -----------------------------------------------------------------
 subroutine lscsq_FePrime
   use iso_c_binding, only : fp => c_double
@@ -444,7 +394,7 @@ subroutine lscsq_FePrU
   ! Fe Prime Unsmoothed
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: npsi, nv, vpar
-  use lscsq_mod, only: ivzero, fe, dfdv, iitr ! dvip
+  use lscsq_mod, only: ivzero, fe, dfdv, iitr 
   implicit none
 
   integer :: ips, iv

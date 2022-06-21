@@ -65,27 +65,35 @@ program driver
 !     pe2Fac pi2Fac convert density in ^14 cm^-3 or ^20 m^-3
 !     and frequency in GHz into
 
-  pe2fac = 1.0e-5*(qe_eV*vc)**2/(pi*me_Kg) 
-  pe2Fac14= 1.0e-19*(qe_eV*vc )**2/(PI*me_Kg)
-  pi2fac  = pe2fac *(me_Kg/mp_Kg) 
-  AioFac  = 3.0e-15_fp * pi2Fac * qe_eV/mp_Kg/TWOPI**2
-  AelFac  = 0.75e-15_fp * pe2Fac * qe_eV/me_Kg/TWOPI**2 
-  OmcFac  = 1.0e-9_fp*qe_eV/me_Kg/TWOPI 
-  ceifac = 1.0e-18*(qe_eV/twopi)**2/me_Kg/mp_Kg
-  cEparIK = 1.0e2_fp*twopi*twopi*qe_eV**2/me_g
+  lh_const%pe2fac = 1.0e-5_fp*(qe_eV*vc)**2/(pi*me_Kg) 
+  lh_const%pe2Fac14= 1.0e-19_fp*(qe_eV*vc )**2/(PI*me_Kg)
+  lh_const%pi2fac  = lh_const%pe2fac *(me_Kg/mp_Kg) 
+  lh_const%AioFac  = 3.0e-15_fp * lh_const%pi2Fac * qe_eV/mp_Kg/TWOPI**2
+  lh_const%AelFac  = 0.75e-15_fp * lh_const%pe2Fac * qe_eV/me_Kg/TWOPI**2 
+  lh_const%OmcFac  = 1.0e-9_fp*qe_eV/me_Kg/TWOPI 
+  lh_const%ceifac = 1.0e-18_fp*(qe_eV/twopi)**2/me_Kg/mp_Kg
+  lh_const%cEparIK = 1.0e2_fp*twopi*twopi*qe_eV**2/me_g
+  lh_const%DqlNorm = 2.5e-10_fp*(qe_eV/me_Kg)**2 / vc**2
+  lh_const%VthNorm = sqrt(1.6e-12_fp*zkev2eV/me_g)/(vc*zmtocm)       
+  lh_const%fe0 = 1.0_fp/sqrt(twopi)
+  lh_const%nu0 = 4.0_fp*pi*zel**4/me_g**2
+  lh_const%PwrNorm = 1.0e6_fp*me_Kg*vc**2
+  lh_const%nuNorm =    zcm3tom3*lh_const%nu0/vc**3
+  lh_const%DcollNorm = lh_const%nuNorm
+
 
   midvec = psivec
 
   EdcVec(1:npsij) = voltlp(1:npsij)/(twopi*rmaj)
 
-  pe2vec = 1.0e-20_fp*pe2fac*lh_inp%ne
-  AelVec(1:npsij) = 1.0e-20_fp*AelFac*lh_inp%ne(1:npsij)*lh_inp%Te(1:npsij)
+  pe2vec = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne
+  AelVec(1:npsij) = 1.0e-20_fp*lh_const%AelFac*lh_inp%ne(1:npsij)*lh_inp%Te(1:npsij)
   ! we should sum over ion species, including impurities. However, LH does not
   ! heat on ions. Take for now only the background species (1 species for test)
-  pi2Vec(1:npsij) = 1.0e-20_fp*pi2Fac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*mp_Kg/lh_inp%mass
-  AioVec(1:npsij) = 1.0e-20_fp*AioFac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*(mp_Kg/lh_inp%mass)**2*lh_inp%Ti(1:npsij)
+  pi2Vec(1:npsij) = 1.0e-20_fp*lh_const%pi2Fac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*mp_Kg/lh_inp%mass
+  AioVec(1:npsij) = 1.0e-20_fp*lh_const%AioFac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*(mp_Kg/lh_inp%mass)**2*lh_inp%Ti(1:npsij)
 
-  wcei2 = ceifac*lh_inp%ni(1)/lh_inp%ne(1)*(lh_inp%chrg/qe_eV)**2*mp_kg/lh_inp%mass
+  wcei2 = lh_const%ceifac*lh_inp%ni(1)/lh_inp%ne(1)*(lh_inp%chrg/qe_eV)**2*mp_kg/lh_inp%mass
   wcei2 = wcei2*Btesl**2
 
   pe2min = pe2Vec(NpsiJ)
@@ -102,10 +110,6 @@ program driver
   call lscsq_main(iraytr,iError)
 
   call lscsq_writecdf
-
-  ! test no ray-tracing and no fe
-!  iraytr = 0
-!  call lscsq_main(LhPwrMW, iraytr,iError)
 
   call dealloc_profs
 

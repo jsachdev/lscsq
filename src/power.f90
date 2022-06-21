@@ -23,7 +23,6 @@ SUBROUTINE lscsq_RfDamp
   pray(1:nv,1:npsi) = 0.0 
   praytot(1:npsi) = 0.0 
   do iry = 1, nrays
-    if (ok_ray(iry).eq.1) then
        do izn = 1, nzones-1
           iv = ivind(izn, iry)
           ! If  ivind=0, the ray was stopped before reaching this izone (izn).
@@ -32,24 +31,21 @@ SUBROUTINE lscsq_RfDamp
           ips = izind(izn, iry)
           PRay(iv,ips) = PRay(iv,ips)+(power(izn,iry)-power(izn+1,iry))
        enddo
-    endif
   enddo
 
   CALL lscsq_Smooth(Pray, nv, npsi, nsmoo, qlsm)
 
-  do ips = 1, npsi   
-     praytot(ips) = sum(pray(1:nv,ips))
-  enddo
+  praytot = sum(pray,1)
  
-  praysum = sum(praytot(1:npsi))
+  praysum = sum(praytot)
 
   ppwrsum = sum(power(1,1:nrays)-power(nzones,1:nrays))
  
 end SUBROUTINE lscsq_RfDamp
 !     -----------------------------------------------------------------
 SUBROUTINE lscsq_RfHeat
-  use lscsq_mod, only: ismo, vpar, dql, dfdv, dvol, pwrnorm, pqltot, pql, pqlsum, qlsm
-  use lscsq_mod, only: npsi,nv,nsmoo, dvplus
+  use lscsq_mod, only: ismo, vpar, dql, dfdv, dvol, pqltot, pql, pqlsum, qlsm
+  use lscsq_mod, only: npsi,nv,nsmoo, dvplus, lh_const
   implicit none
 
   integer :: ips, iv, iSMOi
@@ -64,15 +60,14 @@ SUBROUTINE lscsq_RfHeat
   do ips = 1, npsi
      do iv = 1, nv
         Pql(iv,ips) = -Vpar(iv)*Dql(iv,ips,iSMO)*dfdv(iv,ips,iSMOi) *  &
-                       dvplus(iv) * dVol(ips) * PwrNorm
-!                       dvsym(iv) * dVol(ips) * PwrNorm
+                       dvplus(iv) * dVol(ips) * lh_const%PwrNorm
      enddo
      Pqltot(ips) = sum(Pql(1:nv,ips))
   enddo
 
   CALL lscsq_Smooth(Pql, nv, npsi, nsmoo, qlsm)
   
-  Pqlsum = sum(Pqltot(1:npsi))
+  Pqlsum = sum(Pqltot)
  
 end SUBROUTINE lscsq_RfHeat
 !     -----------------------------------------------------------------
@@ -85,34 +80,29 @@ SUBROUTINE lscsq_RayDamp
   implicit none
 
   character(len=70) :: ErrMsg
-!  real(fp), dimension(nzones) :: xz, yx, yql 
-  real(fp), dimension(:), allocatable :: xz, yx, yql 
+  real(fp), dimension(:), allocatable :: yx, yql 
 
   integer :: i, j, iry, ThisRay
   integer :: iv
   real(fp):: dum
   real(fp):: MxdPdZ=1.0e-5_fp
-!  real(fp):: MxdPdZ=1.0e-10_fp
 
-  allocate(xz(nzones))
   allocate(yx(nzones))
   allocate(yql(nzones))
 
-  xz(1:nzones) = 0.0
   yx(1:nzones) = 0.0
   yql(1:nzones) = 0.0
 
+  ! First do Maxwellian damping dlnPdsX
   ! compute exponential decrement, deposit into yX (Maxwellian) and yQL (quasilinear)
-  ! nzones is stored in, read from   ray.dat
  
   do iry = 1, nrays
-    if (ok_ray(iry).eq.1) then
-     xz(1)  = 1.0_fp
-     yx(1)  = 1.0_fp
-     yQL(1) = 1.0_fp
+     if (ok_ray(iry).eq.1) then
+        yx(1)  = 1.0_fp
+        yQL(1) = 1.0_fp
+     endif
      ! First do Maxwellian damping dlnPdsX
      do i=1,nzones-1
-        xz(i) = REAL(i,kind=fp)
         iv = ivind(i, iry)
         ! If ivind=0, the ray was stopped before reaching this izone
         ! No calculation is appropriate.
@@ -145,7 +135,6 @@ SUBROUTINE lscsq_RayDamp
      ! Next do Quasilinear damping dlnPdsK with the Kernel
      do i=1,nzones-1
         rFudgDmp(i,iry) = 1.0_fp
-        xz(i) = REAL(i,kind=fp)
         iv = ivind(i,iry)
         ! If  ivind=0, the ray was stopped before reaching this izone (izn).
         ! No calculation is appropriate.
@@ -173,12 +162,9 @@ SUBROUTINE lscsq_RayDamp
         endif
      enddo
      power(1:nzones,iry) = yql(1:nzones)*power(1,iry) !  compute power along ray
-    else
-      power(1:nzones,iry) = 0.0  
-    endif
   enddo
 
-  deallocate(xz, yx, yql)
+  deallocate(yx, yql)
 
 end SUBROUTINE lscsq_RayDamp
 !                                                                      |

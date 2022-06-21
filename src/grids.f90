@@ -62,8 +62,6 @@ SUBROUTINE lscsq_VolCalc
   use lscsq_mod, only : npsi,npsij, midary, midvec, ivlvec, ivlary, dvol
   implicit none
 
-
-!!!!!!     EXTERNAL ugrid
   INTEGER :: ips
   REAL(fp) :: xlookup, yreturn
 
@@ -100,10 +98,6 @@ subroutine lscsq_thgrid
   if ((nth.eq.1).or.(dthet.eq.0.0)) then
      thgrid(1) = thet0
   else
-     if (2*(nth/2).EQ.nth) then
-        CALL lscsq_LSCwarn (' require ODD nth ')
-        nth = nth-1
-     endif
      ! set UniformGRID into thgrid
      CALL lscsq_ugrid(thgrid, nth, thmin, thmax)  
   endif
@@ -121,11 +115,6 @@ SUBROUTINE lscsq_vgrids
 
   dvplus(1:nv)=0.0
 
-  ! generate parallel velocity grid
-  if (2*(nv/2).EQ.nv) then
-     CALL lscsq_LSCwarn (' require ODD nv ')
-     nv = nv-1
-  endif
   ! set UniformGRID into Vpar
   CALL lscsq_ugrid(Vpar, nv, Vmin, Vmax)
  
@@ -137,24 +126,24 @@ SUBROUTINE lscsq_vgrids
 
 end subroutine lscsq_vgrids
 !     ------------------------------------------------------------------
-subroutine lscsq_MiscInit
-  
-  use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: mp_g, zcm3tom3, zcmtom, zev2kev
-  use lscsq_mod, only : pi, twopi, zmtocm
-  use lscsq_mod, only : qe_eV, vc, me_Kg, mp_Kg, me_g, mp_g
-  use lscsq_mod, only : nv, pe2fac,pe2fac14,pi2fac,aiofac
-  use lscsq_mod, only : aelfac, omcfac, ceifac, cEparIK
-  implicit none      
-
-  pe2fac = 1.0e-5*(qe_eV*vc)**2/(pi*me_Kg) 
-  pe2Fac14= 1.0e-19*(qe_eV*vc )**2/(PI*me_Kg)
-  pi2fac  = pe2fac *(me_Kg/mp_Kg) 
-  AioFac  = 3.0e-15_fp * pi2Fac * qe_eV/mp_Kg/TWOPI**2
-  AelFac  = 0.75e-15_fp * pe2Fac * qe_eV/me_Kg/TWOPI**2 
-  OmcFac  = 1.0e-9_fp*qe_eV/me_Kg/TWOPI 
-  ceifac = 1.0e-18*(qe_eV/twopi)**2/me_Kg/mp_Kg
-  cEparIK = 1.0e2_fp*twopi*twopi*qe_eV**2/me_g
-
- end subroutine lscsq_MiscInit
+!subroutine lscsq_MiscInit
+!  
+!  use iso_c_binding, only : fp => c_double
+!  use lscsq_mod, only: mp_g, zcm3tom3, zcmtom, zev2kev
+!  use lscsq_mod, only : pi, twopi, zmtocm
+!  use lscsq_mod, only : qe_eV, vc, me_Kg, mp_Kg, me_g, mp_g
+!  use lscsq_mod, only : nv, pe2fac,pe2fac14,pi2fac,aiofac
+!  use lscsq_mod, only : aelfac, omcfac, ceifac, cEparIK
+!  implicit none      
+!
+!  pe2fac = 1.0e-5*(qe_eV*vc)**2/(pi*me_Kg) 
+!  pe2Fac14= 1.0e-19*(qe_eV*vc )**2/(PI*me_Kg)
+!  pi2fac  = pe2fac *(me_Kg/mp_Kg) 
+!  AioFac  = 3.0e-15_fp * pi2Fac * qe_eV/mp_Kg/TWOPI**2
+!  AelFac  = 0.75e-15_fp * pe2Fac * qe_eV/me_Kg/TWOPI**2 
+!  OmcFac  = 1.0e-9_fp*qe_eV/me_Kg/TWOPI 
+!  ceifac = 1.0e-18*(qe_eV/twopi)**2/me_Kg/mp_Kg
+!  cEparIK = 1.0e2_fp*twopi*twopi*qe_eV**2/me_g
+!
+! end subroutine lscsq_MiscInit
 !

@@ -51,7 +51,9 @@ else ifneq (,$(findstring gfortran, $(FC)))
         CFLAGS  := -O
         DCFLAGS := -g
         FFLAGS  := -g -std=f2003 -O3
-        DFFLAGS := -g -Wall -std=f2003
+        DFFLAGS := -g -Wall -std=f2003 -finit-real=zero -fcheckall -fbacktrace \
+		   -ffpe-trap=invalid -ffpe-summary=invalid -fdebug-aux-vars
+
 else
         CFLAGS  := -O
         DCFLAGS := -g
@@ -95,7 +97,7 @@ lib: lib$(LIBNAME).a
 
 $(EXE): $(OBJECTS) $(M_OBJ)
 	$(NICE) $(FC) $(FFLAGS) -o $@ $^ $(L_NETCDF) $(L_MKL)
-	chmod 755 $(EXE)
+#	chmod 755 $(EXE)
 
 lib$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $^
@@ -114,4 +116,4 @@ uninstall:
 	@echo "Uninstalling from $(PREFIX)"
 	@rm -rf $(PREFIX)
 
-.PHONY: all driver lib clean install uninstall
+.PHONY: all lib clean install uninstall $(EXE)

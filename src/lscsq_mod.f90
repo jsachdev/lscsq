@@ -60,24 +60,19 @@ module lscsq_mod
 
   integer, parameter :: neqs=7
   integer, parameter :: neqsp1=8
-  integer, parameter :: NCPLDIM=10      ! max number of coupler *types*
-  integer, parameter :: NGRPDIM = 5     ! max number of groups in the spectrum
 
   integer :: nant  = 1
   integer :: ngrps = 3
   integer :: nstep = 2000 ! max steps in following each ray (500) 
   integer :: npsi = 40
   integer :: nzones = 2000
-  integer :: nslices=301 ! num of n_par slices used in Brambilla calc (301) 
   integer :: nv = 199
   integer :: nth= 19
   integer :: nsmoo=9
   integer :: nsmw=3
   integer :: nrampup= 100 ! number of steps to ramp up power 
   integer :: nflat = 10 
-  integer :: dobram = 0   ! 1 computes spectrum from JEStevens Brambilla code
                           ! 0 makes a spectrum out of arbitrary Gaussians
-  integer :: doxcam = 0      ! 1 give pictures and plots like the 2d x ray camera
   integer :: ntors = 60
   integer :: npols = 1
   integer :: nrays = -1
@@ -101,7 +96,6 @@ module lscsq_mod
   real(fp):: tailteps = 0.0
   real(fp):: tailpeps = 0.0
   real(fp):: tailneps = 0.0
-  real(fp):: scatkdeg = 0.0
 
   real(fp) :: dx_grid=0.0
   real(fp) :: dz_grid=0.0
@@ -110,7 +104,6 @@ module lscsq_mod
   real(fp) :: pqlsum  = 0.0
   real(fp) :: ppwrsum = 0.0
 
-  real(fp) :: fghz_now = 0.0
   real(fp) :: TotPwr = 0.0
   real(fp) :: enpar= 0.0   ! n_{\parallel} launched for ray being worked at the moment
   real(fp) :: enpol=0.0   ! n_{poloidal}  launched for all rays(zero is good enough)
@@ -143,7 +136,6 @@ module lscsq_mod
 
   integer :: lfast = 0
   integer :: lstop = 0
-  integer :: iscatplt=0  !index of the scatter event; used for filling inciThet, scatThet
   real(fp) :: delpsi=0.0
   real(fp) :: Te=0.0
   real(fp) :: Ne=0.0
@@ -158,29 +150,55 @@ module lscsq_mod
   real(fp) :: vmin = -1.0_fp
   real(fp) :: vmax = +1.0_fp
 
-  real(fp) :: VthNorm = 0.0
-  real(fp) :: fe0=0.0
-  real(fp) :: nu0=0.0
   real(fp) :: TailVtrn=0.0
 
-  character(len=8), dimension(ngrpdim) :: couplers
-  character(len=8) :: cplTyp(NCPLDIM)
-
-  real(fp), dimension(neqs) ::  f1, f2, f3, y1, y2, y3
-  real(fp), dimension(neqsp1) :: f, y 
+  real(fp), dimension(neqs) ::  f1=0.0_fp
+  real(fp), dimension(neqs) ::  f2=0.0_fp
+  real(fp), dimension(neqs) ::  f3=0.0_fp
+  real(fp), dimension(neqs) ::  y1=0.0_fp
+  real(fp), dimension(neqs) ::  y2=0.0_fp
+  real(fp), dimension(neqs) ::  y3=0.0_fp
+  real(fp), dimension(neqsp1) :: f=0.0_fp 
+  real(fp), dimension(neqsp1) :: y=0.0_fp 
  
-  integer :: iEdc
-  real(fp) :: Edcinp
-
-  real(fp) :: d1,d2,d4
-  real(fp) :: denom,DKpar,DKper,wdDdw,dDdkABS,epQL, epsL, epsz
+  real(fp) :: d1=0.0_fp
+  real(fp) :: d2=0.0_fp
+  real(fp) :: d4=0.0_fp
+  real(fp) :: denom=0.0_fp
+  real(fp) :: DKpar=0.0_fp
+  real(fp) :: DKper=0.0_fp
+  real(fp) :: wdDdw=0.0_fp
+  real(fp) :: dDdkABS=0.0_fp
+  real(fp) :: epQL=0.0_fp
+  real(fp) :: epsL=0.0_fp
+  real(fp) :: epsz=0.0_fp
  
-  real(fp) :: Eper, Epar, Exy, Aion, Aelc, OmEC2, EparI, EparIK, cEparIK
+  real(fp) :: Eper=0.0_fp
+  real(fp) :: Epar=0.0_fp
+  real(fp) :: Exy=0.0_fp
+  real(fp) :: Aion=0.0_fp
+  real(fp) :: Aelc=0.0_fp
+  real(fp) :: OmEC2=0.0_fp
+  real(fp) :: EparI=0.0_fp
+  real(fp) :: EparIK=0.0_fp
  
-  real(fp) :: D11er, D33er, D12er, D11ar, D33ar, D12ar, D11w0, D33w0, D12w0
+  real(fp) :: D11er=0.0_fp
+  real(fp) :: D33er=0.0_fp
+  real(fp) :: D12er=0.0_fp
+  real(fp) :: D11ar=0.0_fp
+  real(fp) :: D33ar=0.0_fp
+  real(fp) :: D12ar=0.0_fp
+  real(fp) :: D11w0=0.0_fp
+  real(fp) :: D33w0=0.0_fp
+  real(fp) :: D12w0=0.0_fp
 
-  integer :: DqlBox(4), nsmsym
-  real(fp) :: DcollNorm, nuNorm, DqlHite, Pwrnorm, DqlNorm
+  integer :: DqlBox(4)= 0
+  integer :: nsmsym = 0
+  real(fp) :: DcollNorm=0.0_fp
+  real(fp) :: nuNorm=0.0_fp
+  real(fp) :: DqlHite=0.0_fp
+  real(fp) :: Pwrnorm=0.0_fp
+  real(fp) :: DqlNorm=0.0_fp
 
   real(fp), dimension(:), allocatable :: powtsc, curtsc, dlJdlE,dJdE
   real(fp), dimension(:,:), allocatable :: sleave, tleave, senter, tenter
@@ -189,7 +207,7 @@ module lscsq_mod
   real(fp), dimension(:), allocatable :: qlsm
   real(fp), dimension(:,:,:), allocatable :: Dql
 
-  real(fp), dimension(:), allocatable :: fghz, powers, centers, widths, phasedeg
+  real(fp), dimension(:), allocatable :: fghz, powers, centers, widths
   real(fp), dimension(:), allocatable :: fghz_ant, power_inp
   real(fp), dimension(:,:), allocatable :: powers_ant, centers_ant, widths_ant
   real(fp), dimension(:), allocatable :: pwrlevel, FeCvgAry
@@ -201,7 +219,7 @@ module lscsq_mod
 
   real(fp), dimension(:), allocatable :: ntor, Spec
   real(fp), dimension(:,:), allocatable :: ntor_ant, Spec_ant, npol_ant
-  real(fp), dimension(:), allocatable :: npol, scatthet, incithet 
+  real(fp), dimension(:), allocatable :: npol  
 
   real(fp), dimension(:), allocatable :: vpar, vtherm, fenorm, VperpSq, &
                                          dvplus,   &
@@ -223,16 +241,22 @@ module lscsq_mod
   integer, dimension(:), allocatable :: vnormOK
   integer, dimension(:), allocatable :: npeaks
 
-  real(fp) :: vnorm, nuRuna, gmrun, muminus, muplus
-  real(fp) :: dEdcAmnt=1.0e-4
-  real(fp) :: vnmax = 0.99 
-  integer :: ivrun
+  real(fp) :: vnorm = 0.0_fp
+  real(fp) :: nuRuna = 0.0_fp
+  real(fp) :: gmrun = 0.0_fp 
+  real(fp) :: muminus = 0.0_fp
+  real(fp) :: muplus = 0.0_fp
+  real(fp) :: dEdcAmnt=1.0e-4_fp
+  real(fp) :: vnmax = 0.99_fp 
+  integer :: ivrun = 0
 
 ! from lscsq_raybins
-  integer :: ipsi, iray, iznew, izold, izone   
+  integer :: ips=0
+  integer :: iray=0
+  integer :: izone=0   
  
-  real(fp) ::  dnpar = 0.0
-  real(fp) ::  dtdV = 0.0
+  real(fp) ::  dnpar = 0.0_fp
+  real(fp) ::  dtdV = 0.0_fp
   
   integer, dimension(:,:), allocatable :: izind, ivind ! , izcind             
   real(fp), dimension(:,:), allocatable :: rofray, zofray, Pofray,        &
@@ -243,9 +267,9 @@ module lscsq_mod
   real(fp), dimension(:,:), allocatable :: ezsq, npar, power, rFudgDmp, &
                                            dlnPds, dlnPdsK, dlnPdsX    
 
-   integer :: nTSCscrn = 6
-
-     integer         iRayTrsi, iXraysi, iError, iEndRy
+  integer :: iRayTrsi=1
+  integer :: iError=0
+  integer :: iEndRy=0
 
   integer :: nx = 125
   integer :: nz = 159
@@ -253,15 +277,22 @@ module lscsq_mod
   integer :: isym = 0
   integer :: npsij 
 
-  real(fp) :: RlcfsMax, RlcfsMin, ZlcfsMin, ZlcfsMax
+  real(fp) :: RlcfsMax=0.0_fp
+  real(fp) :: RlcfsMin=0.0_fp
+  real(fp) :: ZlcfsMin=0.0_fp
+  real(fp) :: ZlcfsMax=0.0_fp
 
   real(fp), dimension(:,:), allocatable :: psigrd  
 
-  REAL(fp) :: RBphi0,  pe2Fac, pi2Fac, pe2Fac14, AioFac, AelFac, ceiFac, OmcFac
+  REAL(fp) :: RBphi0=0.0_fp
+
   real(fp), allocatable, dimension(:) :: rho, Tekev, pary, ppary, gary, gpary,voltlp,vptemp
 
 
-  real(fp) :: bgzero, rgzero, xmag, zmag              
+  real(fp) :: bgzero=0.0_fp
+  REAL(fp) :: rgzero=0.0_fp
+  REAL(fp) :: xmag=0.0_fp
+  REAL(fp) :: zmag=0.0_fp              
 
   integer(c_int), dimension(:), allocatable :: nz_ind, ok_ray
 
@@ -282,9 +313,6 @@ module lscsq_mod
        integer :: nsmw
        integer :: nrampup
        integer :: nflat
-       integer :: dobram
-       integer :: doxcam
-       integer :: do1rpr
        integer :: ntors
        integer :: npols
        integer :: nrays
@@ -301,13 +329,10 @@ module lscsq_mod
        real(fp):: tailteps
        real(fp):: tailpeps
        real(fp):: tailneps
-       real(fp):: scatkdeg
        real(fp), allocatable, dimension(:,:) :: powers
        real(fp), allocatable, dimension(:,:) :: centers
        real(fp), allocatable, dimension(:,:) :: widths
-       real(fp), allocatable, dimension(:,:) :: phasedeg
        real(fp), allocatable, dimension(:,:) :: fghz  
-       character(len=8), allocatable, dimension(:) :: couplers
   end type lscsq_set
 
 
@@ -316,6 +341,17 @@ module lscsq_mod
 
 
   type lh_rays       
+    integer :: npsi
+    integer :: nv
+    integer :: nrays
+    real(fp), dimension(:), allocatable :: psiary
+!    real(fp), dimension(:), allocatable :: psivec
+!    real(fp), dimension(:), allocatable :: Edcvec
+    integer, dimension(:,:), allocatable :: izind
+    integer, dimension(:,:), allocatable :: ivind
+    integer, dimension(:), allocatable :: ok_ray
+    real(fp), dimension(:), allocatable :: psi  
+    real(fp), dimension(:), allocatable :: vpar
     real(fp), dimension(:), allocatable :: freq_ray    
     real(fp), dimension(:,:), allocatable :: dlnPdsK 
     real(fp), dimension(:,:), allocatable :: dlnPdsX
@@ -325,6 +361,7 @@ module lscsq_mod
     real(fp), dimension(:,:,:), allocatable :: dql  
   end type lh_rays   
 
+  ! this type stores the plasma parameters from the cur_state file 
   type lh_plasma
     real(fp) :: mass
     real(fp) :: chrg
@@ -355,9 +392,28 @@ module lscsq_mod
     real(fp), dimension(:,:), allocatable :: psirz  
   end type lh_plasma
 
+  type lh_param
+     real(fp) :: nu0
+     real(fp) :: fe0
+     real(fp) :: pe2fac
+     real(fp) :: pe2fac14
+     real(fp) :: pi2fac
+     real(fp) :: aiofac
+     real(fp) :: aelfac
+     real(fp) :: omcfac
+     real(fp) :: ceifac
+     real(fp) :: cEparIK
+     real(fp) :: dqlnorm
+     real(fp) :: vthnorm
+     real(fp) :: pwrnorm
+     real(fp) :: dcollnorm
+     real(fp) :: nunorm
+  end type lh_param
+
 
   type(lh_plasma) :: lh_inp
   type(lh_rays) :: lh_out
+  type(lh_param) :: lh_const
 
 
 contains
@@ -365,10 +421,13 @@ contains
 subroutine lscsq_allocrays
 
   if(.not.allocated(senter)) allocate(senter(nzones+1,nrays))
+  senter = 0.0_fp
   if(.not.allocated(tenter)) allocate(tenter(nzones+1,nrays))
+  tenter = 0.0_fp
   if(.not.allocated(sleave)) allocate(sleave(nzones+1,nrays))
+  sleave = 0.0_fp
   if(.not.allocated(tleave)) allocate(tleave(nzones+1,nrays))
-
+  tleave = 0.0_fp
   if (.not.allocated(nz_ind)) allocate(nz_ind(nrays))
   nz_ind(1:nrays) = 1
   if (.not.allocated(ok_ray)) allocate(ok_ray(nrays))
@@ -377,25 +436,43 @@ subroutine lscsq_allocrays
   if (.not.allocated(thgrid)) allocate(thgrid(nth))
   thgrid(1:nth) = 0.0
   if (.not.allocated(Rofray)) allocate(RofRay(nzones,nrays))
+  Rofray = 0.0_fp
   if (.not.allocated(Zofray)) allocate(ZofRay(nzones,nrays))
+  Zofray = 0.0_fp
   if (.not.allocated(Pofray)) allocate(PofRay(nzones,nrays))
+  Pofray = 0.0_fp
   if (.not.allocated(nparry)) allocate(nparry(nzones,nrays))
+  nparry = 0.0_fp
   if (.not.allocated(nperry)) allocate(nperry(nzones,nrays))
+  nperry = 0.0_fp
   if (.not.allocated(rtpsry)) allocate(rtpsry(nzones,nrays))
+  rtpsry = 0.0_fp
   if (.not.allocated(powrry)) allocate(powrry(nzones,nrays))
+  powrry = 0.0_fp
   if (.not.allocated(timery)) allocate(timery(nzones,nrays))
+  timery = 0.0_fp
   if (.not.allocated(distry)) allocate(distry(nzones,nrays))
+  distry = 0.0_fp
   if (.not.allocated(detrry)) allocate(detrry(nzones,nrays))
+  detrry = 0.0_fp
   if (.not.allocated(neofry)) allocate(neofry(nzones,nrays))
+  neofry = 0.0_fp
   if (.not.allocated(bthray)) allocate(bthray(nzones,nrays))
+  bthray = 0.0_fp
   if (.not.allocated(bphray)) allocate(bphray(nzones,nrays))
+  bphray = 0.0_fp
   if (.not.allocated(izind)) allocate(izind(nzones,nrays))
+  izind = 0
   if (.not.allocated(rzind)) allocate(rzind(nzones,nrays))
   rzind(1:nzones,1:nrays) = 0.0
   if (.not.allocated(ivind)) allocate(ivind(nzones,nrays))
+  ivind = 0
   if (.not.allocated(ezsq)) allocate(ezsq(nzones,nrays))
+  ezsq = 0.0_fp
   if (.not.allocated(npar)) allocate(npar(nzones,nrays))
+  npar = 0.0_fp
   if (.not.allocated(power)) allocate(power(nzones,nrays))
+  power = 0.0_fp
   if (.not.allocated(dlnPds)) allocate(dlnPds(nzones,nrays))
   dlnPds(1:nzones,1:nrays) = 0.0
   if (.not.allocated(dlnPdsk)) allocate(dlnPdsk(nzones,nrays))
@@ -418,18 +495,20 @@ subroutine lscsq_allocrays
   spec(1:ntors) = 0.0
   if(.not.allocated(npol)) allocate(npol(npols))
   npol(1:npols) = 0.0
-  if(.not.allocated(scatthet)) allocate(scatthet(npols))
-  scatthet(1:npols) = 0.0
-  if(.not.allocated(incithet)) allocate(incithet(npols))
-  incithet(1:npols) = 0.0
 
+  if(.not.allocated(lh_out%psiary)) allocate(lh_out%psiary(nrays))
   if(.not.allocated(lh_out%dlnPdsK)) allocate(lh_out%dlnPdsK(nzones,nrays))
   if(.not.allocated(lh_out%dlnPdsX)) allocate(lh_out%dlnPdsX(nzones,nrays))
   if(.not.allocated(lh_out%ezsq)) allocate(lh_out%ezsq(nzones,nrays))
+  if(.not.allocated(lh_out%izind)) allocate(lh_out%izind(nzones,nrays))
+  if(.not.allocated(lh_out%ivind)) allocate(lh_out%ivind(nzones,nrays))
+  if(.not.allocated(lh_out%ok_ray)) allocate(lh_out%ok_ray(nrays))
 
   if(.not.allocated(lh_out%fe)) allocate(lh_out%fe(nv,npsi,2))
   if(.not.allocated(lh_out%dfdv)) allocate(lh_out%dfdv(nv,npsi,2))
   if(.not.allocated(lh_out%dql)) allocate(lh_out%dql(nv,npsi,2))
+  if(.not.allocated(lh_out%psi)) allocate(lh_out%psi(npsi))
+  if(.not.allocated(lh_out%vpar)) allocate(lh_out%vpar(nv))
 
 end subroutine lscsq_allocrays
 
@@ -490,7 +569,6 @@ subroutine lscsq_alloc
   if(.not.allocated(powers)) allocate(powers(ngrps))
   if(.not.allocated(centers)) allocate(centers(ngrps))
   if(.not.allocated(widths)) allocate(widths(ngrps))
-  if(.not.allocated(phasedeg)) allocate(phasedeg(ngrps))
 
   if(.not.allocated(pray)) allocate(pray(nv,npsi))
   if(.not.allocated(pql)) allocate(pql(nv,npsi))

@@ -4,15 +4,16 @@ SUBROUTINE lscsq_E2byPr
   use lscsq_mod, only : pi, twopi, eps0
   use lscsq_mod, only : qe_eV, me_g
   use lscsq_mod, only: Ezsq,distry,woc2,y,detrry, iray
-  use lscsq_mod, only: izone, cEparIK,delpsi,Powrry,RofRay,zofray,rzind
+  use lscsq_mod, only: izone, delpsi,Powrry,RofRay,zofray,rzind
   use lscsq_mod, only: pofray, nparry, nperry,psimin,psilim, vpar, lstop
-  use lscsq_mod, only: timery, neofry, pe2fac, rtPsRy, Bthray, Bphray
+  use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
   use lscsq_mod, only: d1, d2, d4, power, npar, iray, dlnPdsK, dlnPdsX
   use lscsq_mod, only: epsz, ecyc2, Epari, epql, epsl, izind, ivind, dvol
-  use lscsq_mod, only: omega, wdDdw, fghz_now, woc4
+  use lscsq_mod, only: omega, wdDdw, woc4, fghz
   use lscsq_mod, only: dtdv, Epar, Eper, Exy, epsq
   use lscsq_mod, only: nzones, psiary, npsi
   use lscsq_mod, only: senter, tenter, sleave, tleave
+  use lscsq_mod, only: lh_const
   implicit none
 
 
@@ -203,7 +204,7 @@ SUBROUTINE lscsq_E2byPr
   real(fp) :: MxdPdz   = 0.90_fp
   real(fp) :: SMALL    = 1.0e-30_fp
 
-  real(fp) :: re41, re42
+  real(fp) :: re41 
 !---------------------------------
 
 !  DMC: always update these; frequency can change with ray index now
@@ -230,7 +231,7 @@ SUBROUTINE lscsq_E2byPr
   dDdEpar    = (Qpar+kper2)*kpar2*kper2 / (kper2-woc2*Epar)
 
   EparI = 0.
-  veow2 = 0.0445e-04_fp*tee/fghz_now**2
+  veow2 = 0.0445e-04_fp*tee/fghz(iray)**2
   psie2 = 2.0_fp*veow2*kpar2
   ! Trying to avoid overflows here.
   if ( psie2 .gt. 0.02 ) then
@@ -293,7 +294,7 @@ SUBROUTINE lscsq_E2byPr
   rtPsRy(izone,iray)   = sqrt( (psi-psimin)/(psilim-psimin) )
   TimeRy(izone,iray)   = y(7)
   DistRy(izone,iray)   = y(8)
-  NeofRy(izone,iray)   = pe2/Pe2Fac * 1.0e+14
+  NeofRy(izone,iray)   = pe2/lh_const%Pe2Fac * 1.0e+14
   BthRay(izone,iray)   = Bpol
   BphRay(izone,iray)   = Bphi
   det = lscsq_DispRela ( y(1) , y(2) , y(4) , y(5) , y(6)  )
@@ -351,7 +352,7 @@ SUBROUTINE lscsq_E2byPr
      izind(izone,iray) = IzindOld
 
      ezsq(izone,iray) = accum(1)*(tLeave(izone,iray)-tEnter(izone,iray))/omega/dVol(IzindOld)
-     dlnPdsK(izone,iray) = accum(2)*cEparik/(npar(izone,iray)*woc)**2 * (tLeave(izone,iray)-tEnter(izone,iray))
+     dlnPdsK(izone,iray) = accum(2)*lh_const%cEparik/(npar(izone,iray)*woc)**2 * (tLeave(izone,iray)-tEnter(izone,iray))
      dlnPdsX(izone,iray) = accum(3)*(tLeave(izone,iray)-tEnter(izone,iray))
 
      if (ezsq(izone,iray) .LT. 0.0) then

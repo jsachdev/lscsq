@@ -18,15 +18,16 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   use lscsq_mod, only : pi, twopi, vc, deg2rad
   use lscsq_mod, only: y,Epar,Eper,d1,d2,d4,woc2,woc4
   use lscsq_mod, only: lfast, begin
-  use lscsq_mod, only: pe2min, fghz_now, Exy, izind, rzind
+  use lscsq_mod, only: pe2min, Exy, izind, rzind
   use lscsq_mod, only: enpar, enpol, rmax,rmin, zmax, rmaj
-  use lscsq_mod, only: thet0, enth, ngrps, fghz
+  use lscsq_mod, only: thet0, enth, ngrps, fghz, omega
   use lscsq_mod, only: pofray, nparry, nperry,psimin,psilim, vpar, lstop
-  use lscsq_mod, only: timery, neofry, pe2fac, rtPsRy, Bthray, Bphray
-  use lscsq_mod, only: cEparIK,delpsi,Powrry,RofRay,zofray
+  use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
+  use lscsq_mod, only: delpsi,Powrry,RofRay,zofray
   use lscsq_mod, only: Ezsq,distry,psimin,detrry
   use lscsq_mod, only: iray, dtdv, nzones, Rlcfsmin, Rlcfsmax
   use lscsq_mod, only: sleave, tleave, senter, tenter, psiary
+  use lscsq_mod, only: lh_const
 
   implicit none
 
@@ -73,8 +74,8 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
      Rad = Rad - drad
      r    = Rmaj + Rad*Cos(T)
      z    =        Rad*Sin(T)
-     Kpol = 1.0e9_fp*enpol*twopi*fghz_now/vc
-     Ktor = 1.0e9_fp*enpar*twopi*fghz_now/vc
+     Kpol = omega*enpol/vc
+     Ktor = omega*enpar/vc
      if (enpar.eq.0.0) then
         RayIniErr = 2
         CALL lscsq_LSCwarn(' enpar == 0 in RayIni ')
@@ -93,7 +94,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       Kpar2 = (Kpol*Bpol+Ktor*RBphi/R)**2/Btot2
       call lscsq_Eps( r, z, Kpar2, 0.0)
 
-10    Azplr(4) = -(aio/fghz_now**4 + ael)
+10    Azplr(4) = -(aio/fghz(iray)**4 + ael)
       Azplr(3) =  Eper
       Qpar = Kpar2 - woc2*Eper
       Azplr(2) = Qpar*(Epar+Eper) +  woc2*Exy**2
@@ -145,15 +146,13 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   return
 35    continue
 
-!  write(*,*) 'r=',r,'z=',z  
-
   y(1)  =  r
   y(2)  =  z
-  y(3)  =  0.0
+  y(3)  =  0.0_fp
   y(4)  =  ( Krad*Bz + Kpol*Br ) / Bpol
   y(5)  =  (-Krad*Br + Kpol*Bz ) / Bpol
   y(6)  =  Ktor*r
-  y(7)  =  0.0
+  y(7)  =  0.0_fp
   ! to begin the time as fn of distance
   y(8) = begin
   det = lscsq_DispRela(y(1),y(2),y(4),y(5),y(6))
@@ -179,7 +178,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   rtPsRy(1,iray)   = sqrt((psi-psimin)/(psilim-psimin))
   TimeRy(1,iray)   = y(7)
   DistRy(1,iray)   = y(8)
-  NeofRy(1,iray)   = pe2/Pe2Fac*1.0e+14_fp
+  NeofRy(1,iray)   = pe2/lh_const%Pe2Fac*1.0e+14_fp
   BthRay(1,iray)   = sqrt(Br**2+Bz**2)
   BphRay(1,iray)   = RBphi/RofRay(1,iray)
   DetrRy(1,iray)   = det/max(abs(d1),abs(d2),abs(d4))
@@ -188,10 +187,10 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
 
   ! The quantities to be collected (RayQt) are averaged over the
   ! zone by summing into accum, dividing by NinAc. This clears.
-  accum(1:nrayqt) = 0.0
-  rayqt(1:nrayqt) = 0.0
+  accum(1:nrayqt) = 0.0_fp
+  rayqt(1:nrayqt) = 0.0_fp
   NinAc = 0
-  dtdV  = 0.0
+  dtdV  = 0.0_fp
 
 end subroutine lscsq_rayini
 !                                                                      |
@@ -213,7 +212,7 @@ SUBROUTINE lscsq_zplrcnr (degree, coefr, zeroc)
 
   ! zroots needs complex coef's
   do i = 1, degree+1
-     coefc(i) = cmplx ( coefr(i) , 0.0 )
+     coefc(i) = cmplx ( coefr(i) , 0.0_fp )
   enddo
  
   polish = 1
@@ -244,7 +243,7 @@ SUBROUTINE lscsq_laguernr ( coef, degree, x, epsilon, polish )
 
   complex :: coef(degree+1)
   complex :: x, dx, x1,b,d,f,g,h,sq,gp,gm,g2
-  real(fp) :: epss = 6.0e-7
+  real(fp) :: epss = 6.0e-7_fp
 
   real(fp) :: epsilon, err, abx, cdx
 
@@ -309,7 +308,7 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
 !
       INTEGER degree, i, j, jj, polish
   integer, parameter :: maxdegre=101
-  real(fp) :: epsilon = 1.0e-6
+  real(fp) :: epsilon = 1.0e-6_fp
   complex :: coef(degree+1), x, b, c, roots(degree), defl(MAXDEGRE)
 !
 !                                       Copy coef's for successive deflation
@@ -318,10 +317,10 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
 !
   do j = degree, 1, -1
      ! Start at 0 to favor smallest remaining root
-     x = CMPLX ( 0.0, 0.0 )
+     x = CMPLX ( 0.0_fp, 0.0_fp )
      CALL lscsq_laguernr ( defl, j, x, EPSILON, 0 )
-     if (abs(AIMAG(x)).LE.2.*EPSILON**2*abs(REAL(x,kind=fp)))       &
-            x = CMPLX(REAL(x,kind=fp),0.0)
+     if (abs(AIMAG(x)).LE.(2.0_fp*EPSILON**2*abs(REAL(x,kind=fp))))       &
+            x = CMPLX(REAL(x,kind=fp),0.0_fp)
      roots( j ) = x
      b = defl( j+1 )
      ! Forward deflation
@@ -352,47 +351,5 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
 
 end subroutine lscsq_zrootsnr 
 !                                                                      |
-!
-SUBROUTINE lscsq_setfreq(indx)
-!  (DMC Mar 2011: reset frequency; can be different for each ray, now)
-  use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : pi, twopi, vc
-  use lscsq_mod, only : fghz_now, omega, woc2, woc4
-  use lscsq_mod, only: ngrps, fghz, powers
-  implicit none
 
-  integer, intent(in) :: indx  ! frequency index [1:ngrps] or 0 or -1
-!
-!        if indx.GT.0 set the frequency for the indicated group
-!        if indx.EQ.0 set frequency for group with maximum power
-!        if indx.LT.0 set the frequency to zero
-!
-!        also set associated variables
-!
-!------------------------
-  real(fp) :: pmax
-  integer :: indx_maxp,igrp
-!------------------------
-
-  IF((indx.lt.0).OR.(indx.gt.nGrps)) then
-     fghz_now = 0.0
-  ELSE IF(indx.eq.0) then
-     pmax=1
-     indx_maxp=1
-     DO igrp=2,nGrps
-        if(powers(igrp).gt.pmax) then
-           pmax=powers(igrp)
-           indx_maxp=igrp
-        endif
-     ENDDO
-     fghz_now = fghz(indx_maxp)
-  ELSE
-     fghz_now = fghz(indx)
-  ENDIF
-
-  omega=  1.0e09_fp * twopi*fghz_now 
-  woc2 = (omega/vc)**2
-  woc4 =  woc2**2
-
-end subroutine lscsq_setfreq
 !

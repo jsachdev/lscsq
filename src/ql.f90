@@ -31,9 +31,10 @@ subroutine lscsq_DqlGen
   ! deposit wave energy into dql matrix
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : power, ezsq, ivind, izind, rfudgdmp
-  use lscsq_mod, only : fghz_now, vpar, fghz !, dvip 
-  use lscsq_mod, only : dql, dqlnorm, qlsm, nv, npsi, nsmoo
-  use lscsq_mod, only: nrays, npols, nzones, ind_ray, ok_ray
+  use lscsq_mod, only : vpar, fghz  
+  use lscsq_mod, only : dql, qlsm, nv, npsi, nsmoo
+  use lscsq_mod, only: nrays, nzones, ind_ray, ok_ray
+  use lscsq_mod, only: lh_const
   implicit none
 
   integer :: iv, ip
@@ -61,8 +62,6 @@ subroutine lscsq_DqlGen
   dql(1:nv,1:npsi,1:2) = 0.0 
   ! Fill up the unsmoothed part of Dql
   do iry  = 1, nrays
-!   if (ok_ray(iry).eq.1) then ! probably not needed
-!      itor = ind_ray(1,iry)
       do izn   = 1, nzones-1
         iv = ivind(izn,iry)
         ! If  ivind=0, the ray was stopped before reaching this izone (izn).
@@ -75,11 +74,10 @@ subroutine lscsq_DqlGen
         Dql(iv,ip,1) = Dql(iv,ip,1)+Power(izn,iry)*rFudgDmp(izn,iry)   &
                      * Ezsq(izn,iry)*abs(vpar(iv))/dv/fghz(iry) 
       enddo        
-!   endif
   enddo
 
   ! Multiply by normalization
-  Dql = Dqlnorm*Dql  
+  Dql = lh_const%Dqlnorm*Dql  
 
   ! Copy unsmoothed into space for smoothed
   Dql(1:nv,1:npsi,2) = Dql(1:nv,1:npsi,1)
@@ -95,7 +93,8 @@ INTEGER FUNCTION lscsq_ivtabl(np)
   implicit none
 
   INTEGER :: iv
-  REAL(fp) :: np, vv            
+  real(fp), intent(in) :: np            
+  REAL(fp) :: vv            
       
   vv = 1.0_fp / np
 
@@ -111,32 +110,6 @@ INTEGER FUNCTION lscsq_ivtabl(np)
 
 end function lscsq_ivtabl
 ! -----------------------------------------------------------------
-subroutine lscsq_DqlInit
-  ! initialize d quasilinear constants
-  use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : dqlnorm
-  use lscsq_mod, only : pi, twopi, vc, qe_eV, me_Kg
-  implicit none
-
-!     Valeo original:
-!     DqlNorm = (PI / 2.) * ((ECHARG / EMASS) ** 2) * EcgsbyEmks *
-!    ^     EcgsbyEmks / (omega * omega) * (3.e10)
-!     see Valeo-Eder, Eq. (22)
-!     but why did he have omega twice
-!     Here is an MKS version based on
-!     Dql = \Sigma (\pi/2) q^2/m^2 E_z^2 /({\Delta k_\parallel} v_\parallel)
-!         = \Sigma (\pi/2) q^2/m^2 E_z^2 / omega * v/delta-v
-!         = \Sigma DqlNorm E_z^2 /(v/c *delta-n)
-!
-! DMC: replaced omega = 2*pi*1e9*fghz_now with 2*pi*1e9; fghz_now can vary
-!      with ray now, so, this variation is now in the summations for the
-!      individual dql array elements;
-!         (pi/2) / (2*pi*1e9) -> (1/4e9)
-!
-  DqlNorm = 2.5e-10_fp*(qe_eV/me_Kg)**2 / vc**2
-!      
-end subroutine lscsq_DqlInit
-
 !---------------------------------------------------
 SUBROUTINE lscsq_convolve(n, nsm, smvec, vout, vin)
 

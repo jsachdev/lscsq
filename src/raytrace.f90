@@ -2,7 +2,7 @@ subroutine lscsq_DoRay
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : twopi, vc
   use lscsq_mod, only : enpar, enpol, ntor, npol
-  use lscsq_mod, only : iray, izone, ierror, ok_ray, fghz_now, fghz
+  use lscsq_mod, only : iray, izone, ierror, ok_ray, fghz
   use lscsq_mod, only: npols, ntors, nrays, Ezsq, ind_ray
   use lscsq_mod, only: thgrid, thet0, enth, NparRy, nz_ind
   use lscsq_mod, only: ezsq, ivind, izind, dlnPdsK, dlnPdsX, npar
@@ -28,8 +28,7 @@ subroutine lscsq_DoRay
      enpol = npol(ipy)
      enth  = thgrid(ith)
      izone = 1
-     fghz_now = fghz(iray)
-     omega=  1.0e09_fp * twopi*fghz_now 
+     omega=  1.0e09_fp * twopi*fghz(iray)
      woc2 = (omega/vc)**2
      woc4 =  woc2**2
 
@@ -55,10 +54,9 @@ subroutine lscsq_PredcLSC
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, deg2rad
   use lscsq_mod, only : neqsp1, neqs, ierror, begin, lstop
-  use lscsq_mod, only : incithet, scatthet, iscatplt 
   use lscsq_mod, only : f1, f2, f3, f
   use lscsq_mod, only : y1, y2, y3, y
-  use lscsq_mod, only : hstplh, nstep, scatkdeg
+  use lscsq_mod, only : hstplh, nstep 
   implicit none
 
 !!!!!!     EXTERNAL RungeLSC, ftion, prtout
@@ -87,10 +85,9 @@ subroutine lscsq_PredcLSC
 
 
   jstart = 4
-  iscatplt = 1
  10   continue
 
-  pc(1:neqs) = 0.0
+  pc(1:neqs) = 0.0_fp
 
   BoundsEr = 0
   lstop = 0
@@ -142,14 +139,14 @@ subroutine lscsq_PredcLSC
 100  continue
 
   jstart = j
-  if (ScatKdeg.gt.1.0e-3_fp) then
-     CALL lscsq_BounShft(yok, y, NEQSP1, ScatKdeg, thi, tho)
-     inciThet(iscatplt) = thi * deg2rad
-     scatThet(iscatplt) = tho * deg2rad
-     iscatplt=iscatplt+1
-  else
+!  if (ScatKdeg.gt.1.0e-3_fp) then
+!     CALL lscsq_BounShft(yok, y, NEQSP1, ScatKdeg, thi, tho)
+!     inciThet(iscatplt) = thi * deg2rad
+!     scatThet(iscatplt) = tho * deg2rad
+!     iscatplt=iscatplt+1
+!  else
      CALL lscsq_BounceIt(yok, y, NEQSP1)
-  endif
+!  endif
 
   iBndsErr = iBndsErr + 1
   if (iBndsErr .GE. nBndsErr) then
@@ -180,7 +177,7 @@ SUBROUTINE lscsq_RungeLSC(BoundsEr)
   real(fp):: dum
 
   f(NEQSP1) = 1.0_fp
-  q(NEQSP1) = 0.0
+  q(NEQSP1) = 0.0_fp
   CALL lscsq_ftion(BoundsEr)
   if(BoundsEr .ne. 0) go to 100
   y1(1:neqs) = y(1:neqs)
@@ -259,268 +256,6 @@ SUBROUTINE lscsq_BounceIt (yok, y, n)
   y(1:n) = yok(1:n)
 
 end subroutine lscsq_bounceit
-!
-!     -----------------------------------------------------------------
-subroutine lscsq_BounShft (yok, y, n, ScatKdeg, thi, tho)
-
-  use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : deg2rad
-  implicit none
- 
-  integer, intent(in) :: n
-  real(fp), dimension(n), intent(inout) :: yok
-  real(fp), dimension(n), intent(inout) :: y
-  real(fp), intent(in) :: scatkdeg 
-
-  integer :: i
-  real(fp):: tauFWP
-  real(fp):: r,z, psi, Br, Bz, RBphi, omc, Tee, pe2, pi2, aio, ael
-  real(fp):: Bph, kro, kzo, kpho, thi, tho
-
-  r   = yok(1)
-  z   = yok(2)
-  CALL lscsq_plasma2d (r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
-  Bph = RBphi/r
-  tauFWP =  (ScatKdeg*deg2rad)**2
-  CALL lscsq_GetKscat(yok(4), yok(5), yok(6)/r, Br, Bz, Bph, tauFWP, kro, kzo, kpho, thi, tho)
-  yok(4) = kro
-  yok(5) = Kzo
-  yok(6) = kpho*r
-
-  y(1:n) = yok(1:n)
-      
-end subroutine lscsq_bounshft
-!
-!     -----------------------------------------------------------------
-!
-subroutine lscsq_GetKscat( kri, kzi, kphi, Br, Bz, Bph, tau, kro, kzo, kpho, thi, tho )
-!     Get K scattered by fluctuations.
-!     Copyright 1993 by F. W. Perkins, H. Takahashi, D. W. Ignat, & E. J. Valeo
-!     Given the initial k in r,z,phi space and the B at that point
-!     return the out k
-!     by transforming to a space in grad psi, transverse, and parallel
-!     referred to as                  rr    ,   tt      ,     ll
-!     rotating the k randomly around the ll (field) direction thus preserving
-!     k_parallel (kll)  and k_perp (kperp) but not k-phi
-!     The parameter tau controls the randomness.
-!     If tau is large then the scattered k peaks perpendicular to the wall
-!     If tau is small, then the reflection is specular, without randomization
-!
-!     The angle is measured with respect to the tt direction
-
-!      tt ( perp to B and to grad psi )
-!      ^
-!      |  theta(i)
-!      |          .
-!      |     .                           (parallel to B directionout of paper)
-!      | .
-!      +------- >  rr (grad poloidal flux
-!
-!     Following Perkins the Prob(ability) of scattering from thetai to theta is
-!
-!          Prob ~ sin(theta) exp{ - (theta-thetai)^2/tau }
-!     and one forms the integral
-!          ProbIntl(theta,thetai,tau) which is zero at theta=0 and 1 at theta=PI
-!     so that if a random number is chosen between 0 and 1, a unique angle
-!     is determined.  If tau is big, PI/2 is most likely; if tau is small
-!     then thetai is most likely
-!
-!
-  use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : rad2deg
-  implicit none
-
-  character(len=40) :: MyString
-      INTEGER i,j,  isimp, ifirst, NumThets
-      INTEGER ithetai, itheta
-      INTEGER idum
-      REAL(fp) ::    kri, kzi, kphi
-      REAL(fp) ::     kro, kzo, kpho, thi, tho
-      REAL(fp) ::     krr, ktt, kll, kperp, signth
-      REAL(fp) ::     ktoti, ktoto, ktott
-      REAL(fp) ::     Br, Bz, Bph, Bp, B, tau
-      REAL(fp) ::     TAUMAX, TAUMIN, tauold, thetai, dtheta
-      REAL(fp) ::     cosalph, sinalph, cosbeta, sinbeta, simp(2)
-      REAL(fp) ::     PI, PIby2, SMALL, ERR
-      REAL(fp) ::     random
-      REAL(fp) ::     lscsq_ran3
-      PARAMETER (NumThets=101)
-!      PARAMETER (TAUMAX=100.0, TAUMIN=1.0e-05)
-      DATA       TAUMAX ,       TAUMIN /                                &
-     &     1.0d2, 1.0d-5/
-!     if  exp{ - (th_out_deg-th_in_deg)^2/del_th_deg^2 }
-!     and exp{ - (th_out_rad-th_in_rad)^2/tauFWPerkins }
-!     then    (del_th_deg,tauFWP) = (0.1deg,2.e-6) (1.0deg,3e-4) (360deg,40.0)
-      REAL(fp) ::     ProbIntl(NumThets, NumThets),theta(NumThets)
-      REAL(fp) ::     clevelin(20), tauDEG
-      DATA ifirst,       SMALL   ,       ERR     /                      &
-     &        1  , 1.0d-25, 1.0d-5 /
-      DATA       simp(1),       simp(2) /                               &
-     &     4.0d0 , 2.0d0  /
-  
-      real(fp) :: re41
-
-!---------------------------------------------
-      SAVE :: PI,PIby2,dtheta,theta,probintl,tauold
-!---------------------------------------------
-!     If first call, set up PI and theta array
-!     Also if first CALL lscsq_set the ProbIntl to the result for large tau
-      if (ifirst .EQ. 1) then
-        ifirst = 0
-        PIby2  = asin(1.0_fp)
-        PI     = PIby2 + PIby2
-        dtheta = PI / real(NumThets - 1,kind=fp)
-        do i = 1,NumThets
-          theta(i) = dtheta * real(i-1,kind=fp)
-          ProbIntl(i,1) = 0.5 * ( 1.0_fp - cos (theta(i)) )
-
-           
-          ProbIntl(i,2:numthets) = ProbIntl(i,1)
-        enddo
-        tauold = TAUMAX
-      endif
-!
-!     Fill the array of ProbIntl unless the values from the last call
-!     or from the first CALL lscsq_set up are ok
-!
-      if ( tau .ne. tauold .and. (tau .LE. tauold .or. tauold .ne. TAUMAX) ) then
-
-         ProbIntl(1,1:numthets) = 0.0
-
-        do j=1,NumThets
-          thetai = theta(j)
-          do i=2,NumThets
-            isimp = mod(i,2) + 1
-            ProbIntl(i,j) = ProbIntl(i-1,j)+simp(isimp)*sin(theta(i))*exp(-(theta(i)-thetai)**2/tau)
-          enddo
-        enddo
-
-!       do 30 j=1,NumThets
-!       do 30 i=2,NumThets
-        do j=1,NumThets
-           do i=2,NumThets
-              ProbIntl(i,j) =  ProbIntl(i,j)/ProbIntl(NumThets,j)
-           enddo
-        enddo
-! 30     continue
-
-!cccc  Contour plot begins
-!     ------------------------------------------------------------------
-!     kclev1: >0 --> clevelin contains levels to be used;
-!                    dots for index less than kclev2;
-!                    solid for index greater or equal kclev2
-!     kclev1: =0 --> first contour at clevelin(1) with
-!                    next one up by clevelin(2), and so on and so on
-!     kclev1: <0 --> rcontr to choose -kclev1 equally spaced values between
-!                    clevelin(1) and clevelin(2)
-!     clevelin:      array of contour levels; this is output if kclev1<0
-!     kclev2:        separates dots from solid lines
-!     CALL lscsq_EZrcon(ix1(1),ix2(1), jy1(1), jy2(1),
-!    ^             xa,    xb,     ya,     yb   ,
-!    ^  kclev1,clevelin,kclev2,
-!    ^  PsiContr,
-!    ^  i1stdim,
-!    ^  xAry, ixmin, ixmax, ixstep,
-!    ^  yAry, jymin, jymax, jystep )
-!      do i=1,9
-!         clevelin(i)=0.1*REAL(i,kind=fp)
-!      enddo
-!      CALL lscsq_EZrcon(150, 500, 250, 600, ZERO, 3.2_fp, ZERO, 3.2_fp,   &
-!     &  9,clevelin,5,                                                   &
-!     &  ProbIntl,                                                       &
-!     &  NumThets,                                                       &
-!     &  theta, 1, NumThets-1, 1,                                        &
-!     &  theta, 1, NumThets-1, 1)
-!      CALL lscsq_EZwrit( 150, 150,                                        &
-!     &            'ProbIntl; theta_in ordinate$',0,0)
-!      CALL lscsq_EZwrit( 150, 125,                                        &
-!     &            'theta_out abcsissa(radians)$',0,0)
-!      tauDEG = sqrt(tau)*rad2deg     
-!      write(MyString,'(''tauDEG, tauFWP: '',                            &
-!     &                   f5.1,1x,1pe9.2,''$'')')tauDEG,tau
-!      CALL lscsq_EZwrit( 150, 100,MyString,0,0)
-!      CALL lscsq_EZfini(0,0)
-!      CALL lscsq_MkGrfLst   (' ProbIntl plot ')
-!cccc  Contour plot ends
-      endif
-!     .
-!     .                                 Here is the normal starting point !!
-!     .
-      Bp  = sqrt(Br*Br + Bz*Bz) + SMALL
-      B   = sqrt(Br*Br + Bz*Bz + Bph*Bph) + SMALL
-      cosalph = abs(Bph)/B
-      sinalph =     Bp  /B
-      cosbeta =     Br  /Bp
-      sinbeta =     Bz  /Bp
-
-      krr =         sinbeta*kri -         cosbeta*kzi +    0.0*kphi
-      ktt = cosalph*cosbeta*kri + cosalph*sinbeta*kzi - sinalph*kphi
-      kll = sinalph*cosbeta*kri + sinalph*sinbeta*kzi + cosalph*kphi
-
-      kperp = sqrt(krr*krr + ktt*ktt)
-      ktott = sqrt(krr*krr + ktt*ktt + kll*kll)
-      if ( krr  .LT. 0.0 ) then
-        signth = - 1.00
-        krr    = abs(krr)
-        thetai = asin (krr/kperp)
-        if (ktt .LT. 0.0 ) thetai = PI - thetai
-      else
-        signth = + 1.00
-        thetai = asin (krr/kperp)
-        if (ktt .LT. 0.0 ) thetai = PI - thetai
-      endif
-      RE41 = thetai/dtheta
-      ithetai = int(RE41) + 1
-!     ithetai = ifix(thetai/dtheta) + 1
-      thi = theta(ithetai)
-!
-      if (tau .LT. TAUMIN) then
-        krr = -signth*krr
-        ktt = +       ktt
-        tho = thi
-      else
-!
-        idum=1
-        random = lscsq_ran3(idum)
-!
-!       do 50 i=2,NumThets
-        do i=2,NumThets
-          itheta = i
-!         if (ProbIntl(i,ithetai) .GT. random ) go to 51
-          if (ProbIntl(i,ithetai) .GT. random ) exit     
-        enddo
-
-! 50     continue
-! 51     continue
-
-
-        krr = -signth*kperp* sin(theta(itheta))
-        ktt =         kperp* cos(theta(itheta))
-        tho = theta(itheta)
-
-      endif
-
-      kro =  sinbeta*krr + cosalph*cosbeta*ktt + sinalph*cosbeta*kll
-      kzo = -cosbeta*krr + cosalph*sinbeta*ktt + sinalph*sinbeta*kll
-      kpho=     0.0*krr - sinalph*        ktt + cosalph*        kll
-
-      ktoti = sqrt(kri*kri + kzi*kzi + kphi*kphi)
-      ktoto = sqrt(kro*kro + kzo*kzo + kpho*kpho)
-!
-!     Take this out June 2000, below
-!      if ( abs(ktoti-ktoto) .gt. ERR*ktoti .or.
-!     ^     abs(ktoti-ktott) .gt. ERR*ktoti .or.
-!     ^     abs(ktott-ktoto) .gt. ERR*ktoto  ) then
-!cc       CALL lscsq_LSCpause
-!        write(6,'(''GetKscat error; ktoti, ktoto, ktott:'',
-!     ^                           3(1x,1pe10.3))') ktoti, ktoto, ktott
-!cc       CALL lscsq_LSCpause
-!      endif
-!     Take this out June 2000, above
-!
-      tauold = tau
-      return
-      END
 !
 !     -----------------------------------------------------------------
 !
@@ -615,10 +350,10 @@ END
 SUBROUTINE lscsq_eps ( r, z, kpar2, kper2 )
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : fghz_now, D11er, D33er, D12er
+  use lscsq_mod, only : D11er, D33er, D12er
   use lscsq_mod, only : D11ar, D33ar, D12ar, D11w0, D33w0, D12w0
   use lscsq_mod, only : Eper , Epar , Exy  , Aion , Aelc 
-  use lscsq_mod, only : ecyc , ecyc2, epsq , ipsq
+  use lscsq_mod, only : ecyc , ecyc2, epsq , ipsq, fghz, iray
   implicit none
 
   real(fp) :: r,z,kpar2,kper2, veow2,elam,elamc,emli0,emli1, &
@@ -629,11 +364,11 @@ SUBROUTINE lscsq_eps ( r, z, kpar2, kper2 )
       
   call lscsq_plasma2d (r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
   If (psi.GE.large) return
-      ecyc  = omc/fghz_now
+      ecyc  = omc/fghz(iray)
       ecyc2 = ecyc*ecyc
-      epsq  = pe2/fghz_now**2
-      ipsq  = pi2/fghz_now**2
-      veow2 = Te2Ve*tee/fghz_now**2
+      epsq  = pe2/fghz(iray)**2
+      ipsq  = pi2/fghz(iray)**2
+      veow2 = Te2Ve*tee/fghz(iray)**2
       elamc = veow2/ecyc2
       elam  = elamc*Kper2
 !     This is the electron Lambda - - (Kper RhoE)^2
@@ -641,7 +376,7 @@ SUBROUTINE lscsq_eps ( r, z, kpar2, kper2 )
       emli0= lscsq_bsi0(elam)
       emli1= lscsq_bsi1(elam)
       epar = 1.0_fp - epsq
-      aion = aio/fghz_now**4
+      aion = aio/fghz(iray)**4
       aelc = ael
       eper = 1.0_fp+epsq/ecyc2-ipsq
       eper = eper-kper2*(aion+aelc)
@@ -707,7 +442,7 @@ subroutine lscsq_ftion(BoundsEr)
 !     QparA= \p Qpar/\p Kpar2
 !     QparW= \p Qpar/\p \omega^2  \cdot \omega^2
 
-  integer :: BoundsEr
+  integer, intent(out) :: BoundsEr
   real(fp) ::     lscsq_DispRela
   real(fp) ::     KdB,KdK,  Kper2,Kper4,Kpar2
   real(fp) ::     Btot2, Qpar, QparE, QparA, QparW, bb, cc
@@ -783,13 +518,13 @@ subroutine lscsq_ftion(BoundsEr)
              lscsq_DispRela(Y(1)-DR,Y(2), Y(4),Y(5),Y(6) ) ) /(2.0_fp*DR)/denom
   dKdwt(2) =(lscsq_DispRela(Y(1),Y(2)+DZ, Y(4),Y(5),Y(6) ) -      &
              lscsq_DispRela(Y(1),Y(2)-DZ, Y(4),Y(5),Y(6) ) ) /(2.0_fp*DZ)/denom
-  dKdwt(3) = 0.0
+  dKdwt(3) = 0.0_fp
   f(1)     = dRdwt(1)/dsdwt
   f(2)     = dRdwt(2)/dsdwt
   f(3)     = dRdwt(3)/dsdwt
   f(4)     = dKdwt(1)/dsdwt
   f(5)     = dKdwt(2)/dsdwt
-  f(6)     = 0.0
+  f(6)     = 0.0_fp
   f(7)     = 1.0_fp     /dsdwt
   dDdkABS  = wdDdw  * dsdwt
 
@@ -803,9 +538,11 @@ subroutine lscsq_WhchRoot (r, z, Kr, Kz, Kphi, NperFs, NperSl)
   implicit none
 
    real(fp) :: NperFs, NperSl, AAD1, BBD2, CCD4, B2m4AC
-   real(fp) :: r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
-   real(fp) :: Kr, Kz, Kphi, Kpar2, Kper2, KdK
+   real(fp) :: psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
+   real(fp) :: Kpar2, Kper2, KdK
    real(fp) :: Btot2, Qpar
+   real(fp), intent(in) :: r, z, Kr, Kz, Kphi
+
  
    KdK  = Kr**2 + (Kz)**2 + (KPhi/r)**2
    CALL lscsq_plasma2d (r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
@@ -843,8 +580,9 @@ FUNCTION lscsq_DispRela (r, z, Kr, Kz, Kphi)
   implicit none
 
   real(fp) :: lscsq_DispRela
-  real(fp) ::  r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
-  real(fp) ::  Kr, Kz, Kphi, Kpar2, Kper2, KdK
+  real(fp), intent(in) :: r, z, Kr, Kz, Kphi
+  real(fp) ::  psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
+  real(fp) ::  Kpar2, Kper2, KdK
   real(fp) ::  Btot2, Qpar
 !
   KdK  = Kr**2 + (Kz)**2 + (KPhi/r)**2

@@ -160,7 +160,8 @@ subroutine lscsq_plasma2d(r,z,psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
 !     AioVec is a vector of thermal correction from ions in GHz^4 frequency
 !
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: dx_grid, dz_grid, omcfac, Te
+  use lscsq_mod, only: dx_grid, dz_grid, Te
+  use lscsq_mod, only: lh_const
   implicit none
 
 !     In which input cylindrical coords r,z (in m)
@@ -228,7 +229,7 @@ subroutine lscsq_plasma2d(r,z,psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
      Bz = psderiv(1, 0) / r
   endif
   call lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
-  omc = OmcFac * sqrt( Br**2 + Bz**2 + (RBphi/r)**2 )
+  omc = lh_const%OmcFac * sqrt( Br**2 + Bz**2 + (RBphi/r)**2 )
   Ael = Ael / omc**4
   Te = Tee
  

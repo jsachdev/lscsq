@@ -16,7 +16,7 @@ end subroutine lscsq_ProfInit
 SUBROUTINE lscsq_GePlPar(psi, Negl, Tegl, Zbrgl, Lnlgl, BetZgl)
   ! get plasma parameters
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : pe2fac, pi2fac
+  use lscsq_mod, only : lh_const
   implicit none
 
   real(fp), intent(in) :: psi
@@ -31,10 +31,10 @@ SUBROUTINE lscsq_GePlPar(psi, Negl, Tegl, Zbrgl, Lnlgl, BetZgl)
 
   call lscsq_plasma1d(psi, psiold, RBphi, Tegl, pe2, pi2, aio, ael)
   
-  pe2 = max(pe2,1.0e-3_fp*pe2Fac)  ! ensure ne > 1.0e11
-  Negl = 1.0e14_fp* pe2/pe2Fac
+  pe2 = max(pe2,1.0e-3_fp*lh_const%pe2Fac)  ! ensure ne > 1.0e11
+  Negl = 1.0e14_fp* pe2/lh_const%pe2Fac
 
-  Zbrgl = pe2/pi2*(pi2Fac/pe2Fac)
+  Zbrgl = pe2/pi2*(lh_const%pi2Fac/lh_const%pe2Fac)
   Zbrgl = max(0.0_fp, min(1.0e2_fp, Zbrgl))  ! ensure 0 < Zbar < 100
 
   if (Tegl .LE. 0.01_fp) then

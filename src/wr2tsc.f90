@@ -10,7 +10,6 @@ subroutine lscsq_PJrfIgrl
   implicit none
 
   integer :: ips
-  real(fp), dimension(npsi) :: nRdotNorm, jRdotNorm
  
   ! Integrate Pray and Pql in LSC flux surfaces
   PrIntgrl(1) = PRayTot(1)
@@ -37,12 +36,10 @@ subroutine lscsq_PJrfIgrl
 
   do ips=1,Npsi
      if (PrIntgrl(ips) .LE. 0.05_fp*PrIntgrl(Npsi) .or.              &
-        PrIntgrl(ips) .GE. 0.95_fp*PrIntgrl(Npsi)) then
+            PrIntgrl(ips) .GE. 0.95_fp*PrIntgrl(Npsi)) then
         nRunDot(ips) = 0.00
         jRunDot(ips) = 0.00
      endif
-     nRdotNorm(ips) = nRunDot(ips)/(NeAry(ips) + 1.e10_fp)
-     jRdotNorm(ips) = jRunDot(ips)/(   js(ips) + 1.e01_fp)
   enddo
 
 end subroutine lscsq_PJrfIgrl
@@ -50,7 +47,7 @@ end subroutine lscsq_PJrfIgrl
 subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : zero, pi, twopi, zm3tocm3, zm2tocm2
+  use lscsq_mod, only : pi, twopi, zm3tocm3, zm2tocm2
   use lscsq_mod, only : zcm3tom3, zcm2tom2
   use lscsq_mod, only: psiary,neary,teary,edcary,edcvec
   use lscsq_mod, only: IpIntgrl,IrIntgrl,PqIntgrl,PrIntgrl
@@ -62,7 +59,9 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
 
   integer ::  l, NumZeros, iion
   integer ::  iamu, ichg
-  real(fp)::  PelFnd, JrfFnd, PqlFnd, PioFnd
+  real(fp), intent(out) ::  PelFnd
+  real(fp), intent(out) ::  JrfFnd 
+  real(fp), intent(out) ::  PqlFnd
   real(fp)::  xlookup, yreturn  
  
   real(fp), dimension(:), allocatable :: curtscp,powdql,powtscsm, powtsci, curtsci, curtscIp, powdqli
@@ -81,16 +80,16 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   if(.not.allocated(powdql)) allocate(powdql(npsij))
   if(.not.allocated(powdqli)) allocate(powdqli(npsij))
 
-  powtsc(1:npsij) = zero
-  powtsci(1:npsij) = zero
-  curtsc(1:npsij) = zero
-  curtscp(1:npsij) = zero
-  curtsci(1:npsij) = zero
-  curtscip(1:npsij) = zero
-  powdql(1:npsij) = zero
-  powdqli(1:npsij) = zero
-  dlJdlE(1:npsij) = zero
-  dJdE(1:npsij) = zero
+  powtsc(1:npsij) = 0.0_fp
+  powtsci(1:npsij) = 0.0 
+  curtsc(1:npsij) = 0.0 
+  curtscp(1:npsij) = 0.0  
+  curtsci(1:npsij) = 0.0  
+  curtscip(1:npsij) = 0.0  
+  powdql(1:npsij) = 0.0 
+  powdqli(1:npsij) = 0.0 
+  dlJdlE(1:npsij) = 0.0  
+  dJdE(1:npsij) = 0.0 
 
   CALL lscsq_PJrfIgrl
 
@@ -182,8 +181,8 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   curtscp(1:npsij) = zcm2tom2*curtscp(1:npsij)
 
   do l = 1, NpsiJ
-     if(curtsc(l).eq.zero .or. dEdcAmnt.eq.zero .or. EdcVec(l).eq.zero) then
-        dlJdlE(l) = zero
+     if(curtsc(l).eq.0.0 .or. dEdcAmnt.eq.0.0 .or. EdcVec(l).eq.0.0) then
+        dlJdlE(l) = 0.0 
      else
         dlJdlE(l) = (curtscp(l)-curtsc(l))/curtsc(l)*EdcVec(l)/dEdcAmnt
      endif
@@ -208,7 +207,6 @@ end subroutine lscsq_output
 !     ------------------------------------------------------------------
 subroutine lscsq_FastFrac
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : zero
   use lscsq_mod, only: vpar, vtherm,fe,ivzero,iitr, dvplus
   use lscsq_mod, only: fenorm,FstFracN,FstFracE
   use lscsq_mod, only: npsi, nv
@@ -247,10 +245,10 @@ subroutine lscsq_FastFrac
       duDelV  = abs ( Vpar(IvZero+1) - Vpar(IvZero) )
       RsltMin = exp ( -ExpMax )
       do 20 i = 1, npsi
-        duFracN = ZERO
-        duFracE = ZERO
-        duMaxwN = ZERO
-        duMaxwE = ZERO
+        duFracN = 0.0 
+        duFracE = 0.0  
+        duMaxwN = 0.0 
+        duMaxwE = 0.0  
         duNorm  = FeNorm(i)
         duVth2  = Vtherm(i)*Vtherm(i)
         if ( vtherm(i) .GE. duDelV ) then
@@ -282,38 +280,28 @@ subroutine lscsq_FastFrac
           FstFracN(i) = ( duFracN - duMaxwN ) / duMaxwN
             FstFracE(i) = ( duFracE - duMaxwE ) / duMaxwE
         else
-          FstFracN(i) = ZERO
-          FstFracE(i) = ZERO
+          FstFracN(i) = 0.0  
+          FstFracE(i) = 0.0  
         endif
  20   continue
-!      if (PrFlg(2) .GE. 1.0)  then
-!!       CALL lscsq_LSCpause
-!        write(nLSCcomm,1000)
-! 1000       format (                                                    &
-!     &'  Psi Index   Fraction Tail Particles  Fraction Tail Energy',/)
-!         write(nLSCcomm,1001)                                           &
-!     &                     (  i, FstFracN(i), FstFracE(i)  , i=1,npsi)
-! 1001       format(t8, i4, t28, 1pe10.3, t50, 1pe10.3)
-!!       CALL lscsq_LSCpause
-!      endif
       return
       END
 !
 !     ------------------------------------------------------------------
       SUBROUTINE lscsq_LSCstop ( ErrMsg )
 use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: nTSCscrn, ierror
+  use lscsq_mod, only: ierror
 implicit none
       CHARACTER*(*) ErrMsg
-      write(nTSCscrn,'('' LSCstop: '',a40 )')                           &
-     &                     ErrMsg
+
+      write(*,'('' LSCstop: '',a40 )')  ErrMsg
       iError = iError + 1
       return
       END
 !     ------------------------------------------------------------------
 SUBROUTINE lscsq_LSCwarn ( ErrMsg )
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: nTSCscrn, iRayTrsi, iendry
+  use lscsq_mod, only: iRayTrsi, iendry
   implicit none
 
   character(len=*) :: ErrMsg
@@ -324,11 +312,11 @@ SUBROUTINE lscsq_LSCwarn ( ErrMsg )
   ilen = len(trim(ErrMsg))
   nWarning = nWarning + 1
   if (nWarning .GT. maxWarn ) then
-     write(nTSCscrn,'('' LSCquit: '',70a1 )') (ErrMsg(i:i), i=1,ilen)
+     write(*,'('' LSCquit: '',70a1 )') (ErrMsg(i:i), i=1,ilen)
      CALL lscsq_LSCstop ( ' too many warnings issued! ' )
      nWarning = 0
   else if (iRayTrsi .ne. 0) then
-     write(nTSCscrn,'('' LSCwarn: '',70a1 )') (ErrMsg(i:i), i=1,ilen)
+     write(*,'('' LSCwarn: '',70a1 )') (ErrMsg(i:i), i=1,ilen)
   else
      ! Do not issue warnings if only re-doing the J of E calculation:  iRayTrsi=0
      return
@@ -357,10 +345,9 @@ end subroutine lscsq_LSCwarn
 !     ------------------------------------------------------------------
       SUBROUTINE lscsq_LSCtrace ( ErrMsg )
 use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: nTSCscrn
 implicit none
       CHARACTER*(*) ErrMsg
-      write(nTSCscrn,'('' LSCtrace called on exiting: '',a40 )')        &
+      write(*,'('' LSCtrace called on exiting: '',a40 )')        &
      &                     ErrMsg
       return
       END

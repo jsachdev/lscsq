@@ -7,15 +7,14 @@ subroutine nml2lsc
               npeaks, centers_ant, widths_ant, powers_ant,     &
               fghz_ant, &
               nparmax,  nparmin,  npolmin,  npolmax,           &
-              centers, couplers, widths, powers, phaseDeg,     &
-              DoBram,  nslices, power_inp,                     &
+              centers, widths, powers,     &
+              power_inp,                     &
               DiffuJrf, PrfSpred
   use lscsq_mod, only:  HstpLH,  nstep,  npsi,   nzones,         &
               nv,    nsmoo,     nsmw,                          &
               nRampUp,    nFlat, WeghtItr,                     &
-              DoXcam,                                          &
               TailTeps, TailPeps, TailNeps,                    &
-              ScatKdeg, TurnNegs,                              &
+              TurnNegs,                              &
               thet0, dthet, nth
  
   use lscsq_mod, only: lscsq_par
@@ -34,22 +33,21 @@ subroutine nml2lsc
 ! arrays are deallocated at the end, before exiting
 
   namelist /inpsize/                                            &
-              ntors, npols, ngrps, nslices,                     &
+              ntors, npols, ngrps,                      &
               npsi, nzones, nv, nth, nrampup, nant
 
   namelist /inpvalue/                                           &
               nparmax, nparmin, npolmin, npolmax,         &
-              centers, couplers, widths, powers, phaseDeg,      &
-              DoBram, DiffuJrf, PrfSpred, npeaks,               &
+              centers, widths, powers,       &
+              DiffuJrf, PrfSpred, npeaks,               &
               fghz_ant,               &
               centers_ant, widths_ant, powers_ant,power_inp
 
   namelist /inpexprt/                                           &
               HstpLH, nstep, nsmoo, nsmw,                       &
               nFlat, WeghtItr,                                  &
-              DoXcam,                                           &
               TailTeps, TailPeps, TailNeps,                     &
-              ScatKdeg, TurnNegs,                               &
+              TurnNegs,                               &
               thet0, dthet 
                                                                         
                                                                         
@@ -70,11 +68,9 @@ subroutine nml2lsc
   fghz_ant = 1.0e-9*lh_inp%freqlh
   power_inp= lh_inp%powerlh
   do i=1,nant
-!     ! check that normalizations add to one
+     ! check that normalizations add to one
      powers_ant(1:npeaks(i),i)=powers_ant(1:npeaks(i),i)/sum(powers_ant(:,i))
    enddo
-  write(*,*) 'powers_ant:',powers_ant
-  write(*,*) 'power_inp:',power_inp
 
   do i=1,nant
      i1 = 1+(i-1)*ntors*npols*nth
@@ -85,11 +81,23 @@ subroutine nml2lsc
   if (DiffuJrf .LT. 0.0) DiffuJrf = 0.00
   if (PrfSpred.LT.0.0 .or. (DiffuJrf.EQ.0.0 .and. PrfSpred.GT.0.0)) PrfSpred = 0.00
   if (PrfSpred.GT.1.0)  PrfSpred = 1.0
-  if (nparmin.GE.nparmax .and. DoBram .EQ. 0) then
+  if (nparmin.GE.nparmax) then
      tmpdum = nparmax
      nparmax = nparmin+1.0e-3_fp
      nparmin = tmpdum -1.0e-3_fp
      CALL lscsq_LSCwarn(' nparmin/max reversed')
+  endif
+
+  ! check that nth is an odd number  
+  if (2*(nth/2).EQ.nth) then
+     CALL lscsq_LSCwarn (' require ODD nth ')
+     nth = nth-1
+  endif
+
+  ! check that nv is an odd number  
+  if (2*(nv/2).EQ.nv) then
+     CALL lscsq_LSCwarn (' require ODD nv ')
+     nv = nv-1
   endif
 
   if ( nsmoo.GT.nv/3 .or. nsmoo.GT.nzones/3 ) then

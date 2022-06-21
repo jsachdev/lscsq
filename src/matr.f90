@@ -19,6 +19,8 @@ subroutine lscsq_ugrid(vector,npts,vmin,vmax)
 end subroutine lscsq_ugrid
 
 subroutine lscsq_ugridEXC(vector,npts,vmin,vmax,EXCLUDED)
+  ! generate a uniform grid vector(j) from vmin to vmax
+  ! excluding points with abs value .le. EXCLUDED
 
   use iso_c_binding, only : fp => c_double
   implicit none
@@ -31,11 +33,7 @@ subroutine lscsq_ugridEXC(vector,npts,vmin,vmax,EXCLUDED)
   real(fp) :: dv 
   real(fp) :: vmaxPLUS, vminPLUS, vmaxMINU, vminMINU, v
  
-  ! generate a uniform grid vector(j) from vmin to vmax
-  ! excluding points with abs value .le. EXCLUDED
- 
   if(npts .LE. 1 .or. vmax .LE. vmin ) return
-!  rnpts1=real(npts-1,kind=fp)
   vmaxPLUS =  max ( abs(EXCLUDED) , vmax )
   vminPLUS =  max ( abs(EXCLUDED) , vmin )
   vmaxMINU =  min (-abs(EXCLUDED) , vmax )
