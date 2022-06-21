@@ -18,11 +18,9 @@ jobs:
         cd src
         make
         make install
-    - name: check
-      run: pwd && ls && ls src/lsc_driver
     - name: CMOD
-      run: cd ci_tests/cmod && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
+      run: cd ci_tests/cmod && ../../src/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: D3D
-      run: cd ci_tests/D3D && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
+      run: cd ci_tests/D3D && ../../src/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: EAST
-      run: cd ci_tests/EAST && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
+      run: cd ci_tests/EAST && ../../src/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
