@@ -3,7 +3,6 @@ nant = 1,
 nGrps = 2,    ! num of spectrum peaks: num of waveguides if DOBRAM>0 (3) 
 ntors=60,
 npols=1,
-nslices=301,   ! num of n_par slices used in Brambilla calc (301) 
 npsi = 30, ! numr of psi shells for power/current dep (10)
 nzones = 1000, ! 4000 number of shell crossings tracked (100) 
 nv = 201,  ! number of v_el/c bins points btw -1 and +1 (199) 
@@ -21,11 +20,6 @@ widths_ant(1,1) = 0.40, widths_ant(2,1) = 0.40,
 powers(1) = 0.04, powers(2) = 0.96,
 centers(1)= -8.00, centers(2)= 2.70, 
 widths(1) = 0.4, widths(2) = 0.4,
-phaseDeg(1) = 130., phaseDeg(2) = 130.,
-DoBram = 0, 
-couplers(1)='TFTRLHCD',
-DiffuJrf = 0.00,
-prfspred = 0.00,   ! Heuristic spreading of rf power (between 0 and 1).
 nparmin  = -9.00,  ! left edge of n_parallel peak   
 nparmax  = 3.50,   ! right edge of n_parallel peak  
 /
