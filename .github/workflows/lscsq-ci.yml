@@ -20,8 +20,6 @@ jobs:
         cd src
         make
         make install
-        ls $PATH
-        ls $PATH/bin
         cd ..
         which lsc_driver
     - name: CMOD
