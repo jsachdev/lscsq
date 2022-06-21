@@ -50,10 +50,9 @@ else ifneq (,$(findstring gfortran, $(FC)))
 	CSPECIAL= -fno-align-commons -fbounds-check -fbacktrace -fPIC -fcheck=pointer
         CFLAGS  := -O
         DCFLAGS := -g
-        FFLAGS  := -g -std=f2003 -O3
+        FFLAGS  := -g -std=f2003 -O3 -fdefault-real-8
         DFFLAGS := -g -Wall -std=f2003 -finit-real=zero -fcheckall -fbacktrace \
 		   -ffpe-trap=invalid -ffpe-summary=invalid -fdebug-aux-vars
-
 else
         CFLAGS  := -O
         DCFLAGS := -g
@@ -77,7 +76,7 @@ OBJECTS := lscsq_mod.o nml2lsc.o fits.o plasejv.o  \
 
 
 # Includes, F90 Use files
-INCLUDES = -I./ -I/usr/include -I`nf-config --includedir`
+INCLUDES = -I./ -I`nf-config --includedir`
 
 L_NETCDF  =  `nc-config --libs` `nf-config --flibs`
 
