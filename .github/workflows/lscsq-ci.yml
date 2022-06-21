@@ -16,12 +16,13 @@ jobs:
         export FC=gfortran
         export F90=gfortran
         export PREFIX=`pwd`
+	export PATH=$PREFIX/bin:$PATH
         cd src
         make
         make install
     - name: CMOD
-      run: cd ci_tests/cmod && ../../bin/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
+      run: cd ci_tests/cmod && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: D3D
-      run: cd ci_tests/D3D && ../../bin/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
+      run: cd ci_tests/D3D && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: EAST
-      run: cd ci_tests/EAST && ../../bin/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
+      run: cd ci_tests/EAST && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
