@@ -21,7 +21,7 @@ jobs:
         make
         make install
     - name: check
-      run: pwd && ls
+      run: pwd && ls && ls bin/ && ls src/lsc_driver
     - name: CMOD
       run: cd ci_tests/cmod && lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: D3D
