@@ -9,26 +9,19 @@ jobs:
     - uses: actions/checkout@v2
     - name: configure
       run: |
-        wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-        sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-        rm GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-        sudo echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-        sudo apt-get update
-        sudo apt-get install -y intel-oneapi-common-vars
-        sudo apt-get install -y intel-oneapi-compiler-fortran
-        sudo apt-get install -y libnetcdf-dev libnetcdff-dev
+        sudo apt-get -y install gfortran
+        sudo apt-get -y install libnetcdf-dev libnetcdff-dev
     - name: build
       run: |
-        source /opt/intel/oneapi/setvars.sh
-        export FC=ifort
-        export F90=ifort
+        export FC=gfortran
+        export F90=gfortran
         export PREFIX=`pwd`
         cd src
         make
         make install
     - name: CMOD
-      run: cd ci_tests/cmod && ../../bin/lsc_driver && diff lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/cmod && ../../bin/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: D3D
-      run: cd ci_tests/D3D && ../../bin/lsc_driver && diff lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/D3D && ../../bin/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
     - name: EAST
-      run: cd ci_tests/EAST && ../../bin/lsc_driver && diff lsc_out.cdf lsc_ref.cdf
+      run: cd ci_tests/EAST && ../../bin/lsc_driver && diff lsc_out.cdf lsc_gcc.cdf
