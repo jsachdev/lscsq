@@ -16,7 +16,7 @@ jobs:
         export FC=gfortran
         export F90=gfortran
         export PREFIX=`pwd`
-	export PATH=$PREFIX/bin:$PATH
+        export PATH=$PREFIX/bin:$PATH
         cd src
         make
         make install
