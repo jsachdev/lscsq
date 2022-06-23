@@ -383,7 +383,6 @@
 !     LSC_08Jan93 :
 !        0.  Tokamak de Varennes and PBXM slow couplers selected by character
 !            variable couplers(nGrups)
-!        1.  dtdV substituted for dVdt in Raystore cause dt can be 0 in TRANSP
 !        2.  Ray data written for RW Harvey & CQL3D  with switch DoHarv
 !        3.  Grid for reporting Prf and Jrf shifted back to be consistent
 !            with comments.  Thanks to Ted.

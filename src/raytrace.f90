@@ -12,9 +12,23 @@ subroutine lscsq_DoRay
   integer :: ity, ipy, ith, RayIniErr, iFillPsi, iErrCount
   integer :: ind
 
+  integer, dimension(:), allocatable :: ninac
+  real(fp), dimension(:,:), allocatable :: accum
+  real(fp), dimension(:,:), allocatable :: rayqt
+
+  if(.not.allocated(ninac)) allocate(ninac(nrays))
+  if(.not.allocated(accum)) allocate(accum(6,nrays))
+  if(.not.allocated(rayqt)) allocate(rayqt(6,nrays))
+
   iFillPsi =1
 
   iErrCount = 1
+
+  ! The quantities to be collected (RayQt) are averaged over the
+  ! zone by summing into accum, dividing by NinAc. This clears.
+  accum = 0.0_fp
+  rayqt = 0.0_fp
+  NinAc = 0
 
   ! initialize all arrays for ray tracing
   CALL lscsq_RyZnInit
@@ -38,7 +52,7 @@ subroutine lscsq_DoRay
         iErrCount = iErrCount+1
         cycle   
      else
-        call lscsq_predcLSC
+        call lscsq_predcLSC(ninac(iray),accum(:,iray),rayqt(:,iray))
      endif
   enddo
 
@@ -49,7 +63,7 @@ subroutine lscsq_DoRay
 
 end subroutine lscsq_doray
 !---------------------------------------
-subroutine lscsq_PredcLSC
+subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, deg2rad
@@ -70,6 +84,8 @@ subroutine lscsq_PredcLSC
   integer :: i,j, jstart, BoundsEr 
   integer :: iBndsErr = 0
   integer :: nBndsErr = 25 
+  real(fp), dimension(6), intent(inout) :: accum1, rayqt1
+  integer, intent(inout) :: ninac1
   real(fp):: yok(NEQSP1), thi, tho
   Real(fp):: pc(NEQS), c(NEQS),p(NEQS),dumy(NEQS)
   Real(fp) :: k1 = 2.65277776_fp 
@@ -91,7 +107,7 @@ subroutine lscsq_PredcLSC
 
   BoundsEr = 0
   lstop = 0
-  CALL lscsq_RungeLSC(BoundsEr)
+  CALL lscsq_RungeLSC(ninac1,accum1,rayqt1,BoundsEr)
   if (BoundsEr .ne. 0 ) then
      CALL lscsq_LSCendr(' Cant recover in PredcLSC')
      return
@@ -99,11 +115,12 @@ subroutine lscsq_PredcLSC
 
   yok(1:neqsp1) = y(1:neqsp1)
 
+
   do j = jstart, nstep
      yok(1:neqsp1) = y(1:neqsp1)
      if (iError.GE.1) return
      if (lstop.EQ.1) then
-        call lscsq_E2byPr
+        call lscsq_E2byPr(ninac1,accum1,rayqt1)
         return
      endif
      y(NEQSP1) = begin+REAL(j,kind=fp)*HstpLH
@@ -129,7 +146,7 @@ subroutine lscsq_PredcLSC
         y(i) = c(i)+k10*pc(i)
      enddo
 
-     call lscsq_E2byPr  ! increment the zone counter
+     call lscsq_E2byPr(ninac1,accum1,rayqt1) ! increment the zone counter
      call lscsq_ftion(BoundsEr)
      if(BoundsEr .ne. 0) go to 100
   enddo 
@@ -159,7 +176,7 @@ end subroutine lscsq_PredcLSC
 !
 !     -----------------------------------------------------------------
 !
-SUBROUTINE lscsq_RungeLSC(BoundsEr)
+SUBROUTINE lscsq_RungeLSC(ninac1,accum1,rayqt1,BoundsEr)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : neqsp1, neqs, hstplh
@@ -170,6 +187,8 @@ SUBROUTINE lscsq_RungeLSC(BoundsEr)
 
   integer :: ia,ib,ic,  i,k
   integer :: BoundsEr
+  real(fp), dimension(6), intent(inout) :: accum1, rayqt1
+  integer, intent(inout) :: ninac1
   real(fp), dimension(4) :: a = [0.5_fp, 0.29289322_fp, 1.70710675_fp, 0.1666667_fp]
   real(fp), dimension(4) :: b = [2.0_fp, 1.0_fp       , 1.0_fp       , 2.0_fp] 
   real(fp), dimension(4) :: c = [0.5_fp, 0.29289322_fp, 1.70710675_fp, 0.5_fp]
@@ -195,8 +214,7 @@ SUBROUTINE lscsq_RungeLSC(BoundsEr)
         enddo
      enddo
      k = ia-1
-     !CALL lscsq_prtout(1)
-     call lscsq_E2byPr
+     call lscsq_E2byPr(ninac1,accum1,rayqt1)
      if (k.eq.1) then
         f2(1:neqs) = f(1:neqs)
         y2(1:neqs) = y(1:neqs)

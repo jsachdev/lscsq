@@ -1,4 +1,4 @@
-SUBROUTINE lscsq_E2byPr
+SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, eps0
@@ -10,10 +10,10 @@ SUBROUTINE lscsq_E2byPr
   use lscsq_mod, only: d1, d2, d4, power, npar, iray, dlnPdsK, dlnPdsX
   use lscsq_mod, only: epsz, ecyc2, Epari, epql, epsl, izind, ivind, dvol
   use lscsq_mod, only: omega, wdDdw, woc4, fghz
-  use lscsq_mod, only: dtdv, Epar, Eper, Exy, epsq
+  use lscsq_mod, only: Epar, Eper, Exy, epsq
   use lscsq_mod, only: nzones, psiary, npsi
   use lscsq_mod, only: senter, tenter, sleave, tleave
-  use lscsq_mod, only: lh_const
+  use lscsq_mod, only: lh_const, lh_out
   implicit none
 
 
@@ -181,19 +181,17 @@ SUBROUTINE lscsq_E2byPr
       INTEGER  lscsq_ivtabl
 
   character(len=70) :: ErrMsg
-  integer, save :: NinAc
-  integer, parameter :: nRayQt=6
-  real(fp), dimension(nrayqt), save :: rayqt
-  real(fp), dimension(nrayqt), save :: accum
 
-  integer, save :: izindold
-
+  real(fp), dimension(6), intent(inout) :: accum1, rayqt1
+  integer, intent(inout) :: ninac1
   integer :: ifirst=1
   integer :: i, jzn, jry, IzindNew, IzindJmp
-  real(fp), save :: RzindOld, sOld, tOld 
+  real(fp) :: sOld, tOld 
   real(fp):: RzindNew, RzindCrs, sNew, tNew, sSlope, tSlope
+  real(fp) :: rzindold
+  integer :: izindold
 
-  real(fp), save :: woc       
+  real(fp) :: woc       
   real(fp) :: Btot, Bpol, Bphi, dDdEpar, dDdEparOld, ee, ex, ey, &
               Kpar, Kper, Kpar2, Kper2, psie2, qpar, veow2
   real(fp) :: psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
@@ -257,12 +255,12 @@ SUBROUTINE lscsq_E2byPr
   epQL  = 0.5_fp * wdDdw / dDdEpar
   epsL  = eps0* epQL
 
-  RayQt(1) = 2.0_fp/epsL
-  RayQt(2) = +1.0_fp/epQL
-  RayQt(3) = -EparI/epQL
-  RayQt(4) = Kpar/woc
-  RayQt(5) = ex
-  RayQt(6) = ey
+  RayQt1(1) = 2.0_fp/epsL
+  RayQt1(2) = +1.0_fp/epQL
+  RayQt1(3) = -EparI/epQL
+  RayQt1(4) = Kpar/woc
+  RayQt1(5) = ex
+  RayQt1(6) = ey
 
   tNew = y(7)
   sNew = y(8)
@@ -272,19 +270,14 @@ SUBROUTINE lscsq_E2byPr
      sold = DistRy(1,iray)
      tenter(izone,iray) = told                 
      senter(izone,iray) = sold                
-     izindold = izind(izone,iray)
-     RzindOld = rzind(izone,iray)
   else
      told = timeRy(izone-1,iray)
      sold = DistRy(izone-1,iray)
      tenter(izone,iray) = tleave(izone-1,iray)
      senter(izone,iray) = sleave(izone-1,iray)
   endif
-
-!  if (izone.lt.3) then
-!     write(*,*) 'zone=',izone
-!     write(*,*) 'r=',y(1),'z=',y(2)
-!  endif
+  izindold = izind(izone,iray)
+  RzindOld = rzind(izone,iray)
 
   RofRay(izone,iray)   = y(1)
   ZofRay(izone,iray)   = y(2)
@@ -311,23 +304,24 @@ SUBROUTINE lscsq_E2byPr
 !  izindnew = minloc(abs(psiary-psi),1)
   ! START major IF/ELSE/ENDIF branch.
   ! If we are in the same zone as before, put RayQt in accumulator.
+  
   if (IzindNew.EQ.IzindOld) then
-     do i=1,nRayQt
-        accum(i)=accum(i)+RayQt(i)
+     do i=1,6
+        accum1(i)=accum1(i)+RayQt1(i)
      enddo
-     NinAc = NinAc + 1
+     NinAc1 = NinAc1 + 1
      ! We are in a new zone.
      ! Divide the accumulator by # entries but take care if NinAc = 0.
      ! Interpolate to find crossings.
   else
-     do i=1,nRayQt
-        if (NinAc .EQ. 0) then
-           accum(i)=RayQt(i)
+     do i=1,6
+        if (NinAc1 .EQ. 0) then
+           accum1(i)=RayQt1(i)
         else
-           accum(i)=accum(i)/REAL(NinAc,kind=fp)
+           accum1(i)=accum1(i)/REAL(NinAc1,kind=fp)
         endif
      enddo
-     NinAc = 0
+     NinAc1 = 0
 
      sSlope   = (sNew-sOld)/(RzindNew-RzindOld)
      tSlope   = (tNew-tOld)/(RzindNew-RzindOld)
@@ -346,14 +340,14 @@ SUBROUTINE lscsq_E2byPr
 
      ! Compute the desired parameters for the zone we just left.
      ! npar according to the velocity table 15Jan93
-     npar(izone,iray)  = accum(4)
+     npar(izone,iray)  = accum1(4)
      ivind(izone,iray) = lscsq_ivtabl(npar(izone,iray))
      npar(izone,iray)  = 1.0_fp/vpar(ivind(izone,iray)) ! fmp-why this replacement?
      izind(izone,iray) = IzindOld
 
-     ezsq(izone,iray) = accum(1)*(tLeave(izone,iray)-tEnter(izone,iray))/omega/dVol(IzindOld)
-     dlnPdsK(izone,iray) = accum(2)*lh_const%cEparik/(npar(izone,iray)*woc)**2 * (tLeave(izone,iray)-tEnter(izone,iray))
-     dlnPdsX(izone,iray) = accum(3)*(tLeave(izone,iray)-tEnter(izone,iray))
+     ezsq(izone,iray) = accum1(1)*(tLeave(izone,iray)-tEnter(izone,iray))/omega/dVol(IzindOld)
+     dlnPdsK(izone,iray) = accum1(2)*lh_const%cEparik/(npar(izone,iray)*woc)**2 * (tLeave(izone,iray)-tEnter(izone,iray))
+     dlnPdsX(izone,iray) = accum1(3)*(tLeave(izone,iray)-tEnter(izone,iray))
 
      if (ezsq(izone,iray) .LT. 0.0) then
         write(ErrMsg,'('' Ez2<0!zn ind iry epsL epsZ:'', i6,i6,i6,1pe10.2,1x,1pe10.2)')   &
@@ -363,13 +357,12 @@ SUBROUTINE lscsq_E2byPr
         dlnPdsK(izone,iray)= 0.0
         dlnPdsX(izone,iray)= 0.0
      endif
-     dtdV = (tLeave(izone,iray)-tEnter(izone,iray))/(abs(dVol(izindOld))+SMALL)
      ! Dont forget to save the integers.
 
      ! We are done with the information accumulated for the old zone, so
      ! set the accumulator to the value of the parameters we just calculated. Reset counter.
-     accum(1:nrayqt)=RayQt(1:nrayqt)
-     NinAc = 1
+     accum1=RayQt1
+     NinAc1 = 1
 
      ! If we have more zones to go, then INCREMENT THE ZONE COUNTER, and
      ! fill the arrays with the same values we just found, in case we run out of time steps (eg).

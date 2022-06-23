@@ -25,13 +25,15 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
   use lscsq_mod, only: delpsi,Powrry,RofRay,zofray
   use lscsq_mod, only: Ezsq,distry,psimin,detrry
-  use lscsq_mod, only: iray, dtdv, nzones, Rlcfsmin, Rlcfsmax
+  use lscsq_mod, only: iray, nzones, Rlcfsmin, Rlcfsmax
   use lscsq_mod, only: sleave, tleave, senter, tenter, psiary
-  use lscsq_mod, only: lh_const
+  use lscsq_mod, only: lh_const !, lh_out
 
   implicit none
 
   integer, intent(out) :: RayIniErr
+  integer :: izindold
+  real(fp) :: rzindold
 
   real(fp) :: Kpar2, Kpol, Krad, Ktor
   complex, dimension(3) :: zc
@@ -46,18 +48,11 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   real(fp) :: CosT,drad,rad,rstar,SinT,t 
   real(fp) :: SEARCHINCR = 5.0e-03_fp
 
-  integer, save :: izindold
-  real(fp), save :: RzindOld !, sOld, tOld 
-  real(fp):: RzindNew !, RzindCrs, sNew, tNew, sSlope, tSlope
-
-  integer, save :: NinAc
-  integer, parameter :: nRayQt=6
-  real(fp), dimension(nrayqt), save :: rayqt
-  real(fp), dimension(nrayqt), save :: accum
+  real(fp):: RzindNew
 
   real(fp) :: re41
-  real(fp) :: Btot, Bphi !, dDdEpar, dDdEparOld, ee, ex, ey, &
-  real(fp) :: Kpar, Kper, kper2 !, Kpar2, Kper2, psie2, qpar, veow2
+  real(fp) :: Btot, Bphi 
+  real(fp) :: Kpar, Kper, kper2 
 
   T = enth * deg2rad    
   
@@ -184,13 +179,6 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   DetrRy(1,iray)   = det/max(abs(d1),abs(d2),abs(d4))
   tenter(1,iray)   = y(7)
   senter(1,iray)   = y(8)
-
-  ! The quantities to be collected (RayQt) are averaged over the
-  ! zone by summing into accum, dividing by NinAc. This clears.
-  accum(1:nrayqt) = 0.0_fp
-  rayqt(1:nrayqt) = 0.0_fp
-  NinAc = 0
-  dtdV  = 0.0_fp
 
 end subroutine lscsq_rayini
 !                                                                      |

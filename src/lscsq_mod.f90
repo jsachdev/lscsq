@@ -255,9 +255,6 @@ module lscsq_mod
   integer :: iray=0
   integer :: izone=0   
  
-  real(fp) ::  dnpar = 0.0_fp
-  real(fp) ::  dtdV = 0.0_fp
-  
   integer, dimension(:,:), allocatable :: izind, ivind ! , izcind             
   real(fp), dimension(:,:), allocatable :: rofray, zofray, Pofray,        &
                                          nparry, nperry, rtpsry, powrry,&
@@ -338,8 +335,6 @@ module lscsq_mod
 
   type(lscsq_set), allocatable, dimension(:) :: lscsq_par
 
-
-
   type lh_rays       
     integer :: npsi
     integer :: nv
@@ -412,8 +407,8 @@ module lscsq_mod
 
 
   type(lh_plasma) :: lh_inp
-  type(lh_rays) :: lh_out
-  type(lh_param) :: lh_const
+  type(lh_rays)   :: lh_out
+  type(lh_param)  :: lh_const
 
 
 contains
@@ -495,6 +490,7 @@ subroutine lscsq_allocrays
   spec(1:ntors) = 0.0
   if(.not.allocated(npol)) allocate(npol(npols))
   npol(1:npols) = 0.0
+
 
   if(.not.allocated(lh_out%psiary)) allocate(lh_out%psiary(nrays))
   if(.not.allocated(lh_out%dlnPdsK)) allocate(lh_out%dlnPdsK(nzones,nrays))
