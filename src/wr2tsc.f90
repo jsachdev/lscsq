@@ -3,7 +3,7 @@ subroutine lscsq_PJrfIgrl
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi
   use lscsq_mod, only: npsi
-  use lscsq_mod, only: midary, psiary, neary, xmag
+  use lscsq_mod, only: midary, psiary, neary
   use lscsq_mod, only: jrundot, nrundot, js, jsp,IrIntgrl
   use lscsq_mod, only: IpIntgrl,PqIntgrl,PqlTot
   use lscsq_mod, only: PrIntgrl, praytot, dvol
@@ -31,8 +31,8 @@ subroutine lscsq_PJrfIgrl
      IrIntgrl(ips) = IrIntgrl(ips-1) + js(ips)*dVol(ips)
      IpIntgrl(ips) = IpIntgrl(ips-1) +jsp(ips)*dVol(ips)
   enddo
-!  IrIntgrl = IrIntgrl/(twopi*xmag)
-!  IpIntgrl = IpIntgrl/(twopi*xmag)
+!  IrIntgrl = IrIntgrl/(twopi*lh_inp%Raxis)
+!  IpIntgrl = IpIntgrl/(twopi*lh_inp%Raxis)
 
   do ips=1,Npsi
      if (PrIntgrl(ips) .LE. 0.05_fp*PrIntgrl(Npsi) .or.              &
@@ -51,9 +51,10 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   use lscsq_mod, only : zcm3tom3, zcm2tom2
   use lscsq_mod, only: psiary,neary,teary,edcary,edcvec
   use lscsq_mod, only: IpIntgrl,IrIntgrl,PqIntgrl,PrIntgrl
-  use lscsq_mod, only: midvec,midary,npsij,xmag
+  use lscsq_mod, only: midary,npsij 
   use lscsq_mod, only: vnormpos,vnormneg
-  use lscsq_mod, only: dEdcAmnt,dVlVec
+  use lscsq_mod, only: dEdcAmnt
+  use lscsq_mod, only: lh_inp
   use lscsq_mod, only: npsi, powtsc, curtsc, dJdE,dlJdlE
   implicit none
 
@@ -99,11 +100,12 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   !end dmc fixup block
 
   do l = 1, NpsiJ-1
-     xlookup =  MidVec(l)
+!     xlookup =  MidVec(l)
+     xlookup =  lh_inp%plflx(l)
      !dmc fixup block
      if(xlookup.lt.MidAry(1)) then
         inside=l
-        zvin=zvin+dVlVec(l)
+        zvin=zvin+lh_inp%dvol(l)
         cycle
      endif
      !end dmc fixup block
@@ -137,16 +139,16 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
 
 !dmc fixup block -- flatten current and power inside innermost grid
   if(inside.gt.0) then
-     zvin=zvin+dVlVec(inside+1)
-     powtscI(1)=powtscI(inside+1)*dvlvec(1)/zvin
-     powDqlI(1)=powDqlI(inside+1)*dvlvec(1)/zvin
-     curtscI(1)=curtscI(inside+1)*dvlvec(1)/zvin
-     curtscIp(1)=curtscIp(inside+1)*dvlvec(1)/zvin
+     zvin=zvin+lh_inp%dvol(inside+1)
+     powtscI(1)=powtscI(inside+1)*lh_inp%dvol(1)/zvin
+     powDqlI(1)=powDqlI(inside+1)*lh_inp%dvol(1)/zvin
+     curtscI(1)=curtscI(inside+1)*lh_inp%dvol(1)/zvin
+     curtscIp(1)=curtscIp(inside+1)*lh_inp%dvol(1)/zvin
      do l=2,inside
-        powtscI(l)=powtscI(l-1)+powtscI(inside+1)*dvlvec(l)/zvin
-        powDqlI(l)=powDqlI(l-1)+powDqlI(inside+1)*dvlvec(l)/zvin
-        curtscI(l)=curtscI(l-1)+curtscI(inside+1)*dvlvec(l)/zvin
-        curtscIp(l)=curtscIp(l-1)+curtscIp(inside+1)*dvlvec(l)/zvin
+        powtscI(l)=powtscI(l-1)+powtscI(inside+1)*lh_inp%dvol(l)/zvin
+        powDqlI(l)=powDqlI(l-1)+powDqlI(inside+1)*lh_inp%dvol(l)/zvin
+        curtscI(l)=curtscI(l-1)+curtscI(inside+1)*lh_inp%dvol(l)/zvin
+        curtscIp(l)=curtscIp(l-1)+curtscIp(inside+1)*lh_inp%dvol(l)/zvin
      enddo
   endif
 !end dmc fixup block
@@ -160,10 +162,10 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
 !  curtscp(1)= curtscIp(1)/dVlVec(1)
 
   do l = 2, NpsiJ
-     powtsc(l) = (powtscI(l)-powtscI(l-1))/dVlVec(l)
-     powDql(l) = (powDqlI(l)-powDqlI(l-1))/dVlVec(l)
-     curtsc(l) = (curtscI(l)-curtscI(l-1))/dVlVec(l)
-     curtscp(l)= (curtscIp(l)-curtscIp(l-1))/dVlVec(l)
+     powtsc(l) = (powtscI(l)-powtscI(l-1))/lh_inp%dvol(l)
+     powDql(l) = (powDqlI(l)-powDqlI(l-1))/lh_inp%dvol(l)
+     curtsc(l) = (curtscI(l)-curtscI(l-1))/lh_inp%dvol(l)
+     curtscp(l)= (curtscIp(l)-curtscIp(l-1))/lh_inp%dvol(l)
   enddo
   powtsc(1)=powtsc(2)
   powDql(1)=powDql(2)
@@ -175,8 +177,8 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   ! I have to mult by 2 pi R to make an area! (comment by DMC)
   ! fmp - I do not like this multiplication, since we are using a volume
   ! integration by flux surface and multiplying by a constant major radius
-!  curtsc(1:npsij) = zcm2tom2*curtsc(1:npsij)*(twopi*xmag)
-!  curtscp(1:npsij) = zcm2tom2*curtscp(1:npsij)*(twopi*xmag)
+!  curtsc(1:npsij) = zcm2tom2*curtsc(1:npsij)*(twopi*lh_inp%Raxis)
+!  curtscp(1:npsij) = zcm2tom2*curtscp(1:npsij)*(twopi*lh_inp%Raxis)
   curtsc(1:npsij) = zcm2tom2*curtsc(1:npsij)
   curtscp(1:npsij) = zcm2tom2*curtscp(1:npsij)
 

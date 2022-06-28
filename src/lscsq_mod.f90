@@ -97,9 +97,6 @@ module lscsq_mod
   real(fp):: tailpeps = 0.0
   real(fp):: tailneps = 0.0
 
-  real(fp) :: dx_grid=0.0
-  real(fp) :: dz_grid=0.0
-
   real(fp) :: praysum = 0.0
   real(fp) :: pqlsum  = 0.0
   real(fp) :: ppwrsum = 0.0
@@ -111,28 +108,16 @@ module lscsq_mod
   real(fp) :: omega=0.0   ! RF frequency (radians/sec)
 
   real(fp) :: begin=0.0    ! value of path length to begin ray (0 at start)
-  real(fp) :: btesl=0.0    ! B_{T}  field at nominal major radius
-  real(fp) :: capo2=0.0    ! \omega_{ce}\omega_{ci} / \omega^2
+!  real(fp) :: capo2=0.0    ! \omega_{ce}\omega_{ci} / \omega^2
                        !  no LH resonance at any density if .lt. 1
   real(fp) :: ipsq=0.0     ! \sum_i \omega_{pi}^2 / \omega^2
   real(fp) :: ecyc=0.0    ! \omega_{ce} / \omega
-  real(fp) :: icyc=0.0    ! \omega_{pi} / \omega
+!  real(fp) :: icyc=0.0    ! \omega_{pi} / \omega
   real(fp) :: epsq=0.0    ! \omega_{pe}^2 / \omega^2
   real(fp) :: ecyc2=0.0   ! ecyc^2
-  real(fp) :: psilim=1.0  ! \psi_{lim}  Flux in webers per radian
-  real(fp) :: psimin=0.0  ! \psi_{min}
-  real(fp) :: kappa=1.0   ! elongation: \kappa
-  real(fp) :: qlim=1.0    ! q_{lim}
-  real(fp) :: q0=1.0      ! q_{0}
-  real(fp) :: rmaj=0.0
-  real(fp) :: Rmag=0.0    !  magnetic axis....same as xmag in other commons
-  real(fp) :: rmax=0.0    !  outer radius of flux grid
-  real(fp) :: rmin=0.0    !  inner radius of flux grid
   real(fp) :: wcei2=0.0   ! \omega_{ce} \omega_{cH} \sum_i ( n_i Z_i^2 / n_e) m_H/m_i
   real(fp) :: woc2=0.0    ! \omega^2/c^2
   real(fp) :: woc4=0.0    ! woc2^2
-  real(fp) :: zmin=0.0    ! lower extent of flux grid
-  real(fp) :: zmax=0.0    ! upper extent of flux grid
 
   integer :: lfast = 0
   integer :: lstop = 0
@@ -270,31 +255,16 @@ module lscsq_mod
 
   integer :: nx = 125
   integer :: nz = 159
-  integer :: iplim = 1
-  integer :: isym = 0
   integer :: npsij 
-
-  real(fp) :: RlcfsMax=0.0_fp
-  real(fp) :: RlcfsMin=0.0_fp
-  real(fp) :: ZlcfsMin=0.0_fp
-  real(fp) :: ZlcfsMax=0.0_fp
 
   real(fp), dimension(:,:), allocatable :: psigrd  
 
-  REAL(fp) :: RBphi0=0.0_fp
-
-  real(fp), allocatable, dimension(:) :: rho, Tekev, pary, ppary, gary, gpary,voltlp,vptemp
-
-
-  real(fp) :: bgzero=0.0_fp
-  REAL(fp) :: rgzero=0.0_fp
-  REAL(fp) :: xmag=0.0_fp
-  REAL(fp) :: zmag=0.0_fp              
+  real(fp), allocatable, dimension(:) :: rho, voltlp, vptemp
 
   integer(c_int), dimension(:), allocatable :: nz_ind, ok_ray
 
-  real(fp), allocatable, dimension(:) :: dVlVec, iVlVec, pi2Vec, AioVec, AelVec,           &
-                          pe2Vec, RBpVec, VprVec, PsiVec, EdcVec, MidVec, TeeVec
+  real(fp), allocatable, dimension(:) :: pi2Vec, AioVec, AelVec,           &
+                          pe2Vec, EdcVec, TeeVec
       REAL(fp), dimension(4) :: pi2Coefs, AioCoefs, AelCoefs, pe2Coefs, RBphiCoefs, TeeCoefs
 
   type lscsq_set
@@ -340,8 +310,6 @@ module lscsq_mod
     integer :: nv
     integer :: nrays
     real(fp), dimension(:), allocatable :: psiary
-!    real(fp), dimension(:), allocatable :: psivec
-!    real(fp), dimension(:), allocatable :: Edcvec
     integer, dimension(:,:), allocatable :: izind
     integer, dimension(:,:), allocatable :: ivind
     integer, dimension(:), allocatable :: ok_ray
@@ -360,10 +328,6 @@ module lscsq_mod
   type lh_plasma
     real(fp) :: mass
     real(fp) :: chrg
-    real(fp) :: Rminlcfs
-    real(fp) :: Rmaxlcfs
-    real(fp) :: Zminlcfs
-    real(fp) :: Zmaxlcfs
     real(fp) :: Rmin
     real(fp) :: Rmax
     real(fp) :: Zmin
@@ -373,6 +337,10 @@ module lscsq_mod
     real(fp) :: B_axis  
     real(fp) :: Raxis  
     real(fp) :: Zaxis  
+    real(fp) :: Rminlcfs
+    real(fp) :: Rmaxlcfs
+    real(fp) :: Zminlcfs
+    real(fp) :: Zmaxlcfs
     real(fp), dimension(:), allocatable :: powerlh
     real(fp), dimension(:), allocatable :: freqlh
     real(fp), dimension(:), allocatable :: ne
@@ -642,20 +610,13 @@ subroutine alloc_profs
 
   implicit none
 
-  if(.not.allocated(dvlvec)) allocate(dvlvec(npsij))
-  if(.not.allocated(ivlvec)) allocate(ivlvec(npsij))
   if(.not.allocated(pi2vec)) allocate(pi2vec(npsij))
   if(.not.allocated(aiovec)) allocate(aiovec(npsij))
   if(.not.allocated(aelvec)) allocate(aelvec(npsij))
   if(.not.allocated(pe2vec)) allocate(pe2vec(npsij))
   if(.not.allocated(edcvec)) allocate(edcvec(npsij))
-  if(.not.allocated(midvec)) allocate(midvec(npsij))
   if(.not.allocated(voltlp)) allocate(voltlp(npsij))
-  if(.not.allocated(psivec)) allocate(psivec(npsij))
-  if(.not.allocated(vprvec)) allocate(vprvec(npsij))
-  if(.not.allocated(rbpvec)) allocate(rbpvec(npsij))
 
-  if(.not.allocated(TekeV)) allocate(TekeV(npsij))
   if(.not.allocated(powtsc)) allocate(powtsc(npsij))
   if(.not.allocated(curtsc)) allocate(curtsc(npsij))
   if(.not.allocated(dJdE)) allocate(dJdE(npsij))
@@ -670,9 +631,9 @@ subroutine dealloc_profs
 
 implicit none
 
-  deallocate(dvlvec,ivlvec,pi2vec,aiovec,aelvec,pe2vec)
-  deallocate(edcvec,midvec,voltlp,psivec,vprvec,rbpvec)
-  deallocate(Tekev,powtsc,curtsc,dJdE,dlJdlE)
+  deallocate(pi2vec,aiovec,aelvec,pe2vec)
+  deallocate(edcvec,voltlp)
+  deallocate(powtsc,curtsc,dJdE,dlJdlE)
 
 
 end subroutine dealloc_profs

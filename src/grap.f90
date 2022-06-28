@@ -10,7 +10,8 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
 !     i,j as last call
 !
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : nx, nz, rmin, zmin, psigrd
+  use lscsq_mod, only : nx, nz, psigrd
+  use lscsq_mod, only: lh_inp
  
   implicit none
 
@@ -38,8 +39,8 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
       DIMENSION psderiv(0:2, 0:*)
       DATA xpa(0),zpa(0)/ 1.d0, 1.d0/
 
-      rjval = (zz-zmin)/deez+1.0_fp
-      rival = (xx-rmin )/deex+1.0_fp
+      rjval = (zz-lh_inp%zmin)/deez+1.0_fp
+      rival = (xx-lh_inp%rmin )/deex+1.0_fp
       jval = rjval
       ival = rival
  

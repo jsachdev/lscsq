@@ -19,15 +19,16 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   use lscsq_mod, only: y,Epar,Eper,d1,d2,d4,woc2,woc4
   use lscsq_mod, only: lfast, begin
   use lscsq_mod, only: pe2min, Exy, izind, rzind
-  use lscsq_mod, only: enpar, enpol, rmax,rmin, zmax, rmaj
+  use lscsq_mod, only: enpar, enpol
   use lscsq_mod, only: thet0, enth, ngrps, fghz, omega
-  use lscsq_mod, only: pofray, nparry, nperry,psimin,psilim, vpar, lstop
+  use lscsq_mod, only: pofray, nparry, nperry, vpar, lstop
   use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
   use lscsq_mod, only: delpsi,Powrry,RofRay,zofray
-  use lscsq_mod, only: Ezsq,distry,psimin,detrry
-  use lscsq_mod, only: iray, nzones, Rlcfsmin, Rlcfsmax
+  use lscsq_mod, only: Ezsq,distry,detrry
+  use lscsq_mod, only: iray, nzones, npsij 
   use lscsq_mod, only: sleave, tleave, senter, tenter, psiary
   use lscsq_mod, only: lh_const !, lh_out
+  use lscsq_mod, only: lh_inp
 
   implicit none
 
@@ -36,7 +37,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   real(fp) :: rzindold
 
   real(fp) :: Kpar2, Kpol, Krad, Ktor
-  complex, dimension(3) :: zc
+  complex(fp), dimension(3) :: zc
   real(fp), dimension(4) :: Azplr
 
   real(fp) :: r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
@@ -57,17 +58,17 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   T = enth * deg2rad    
   
   RayIniErr = 0
-  Rad = Rmax-Rmaj
-  If ( Cos(T) .LT. 0.0 ) Rad=Rmaj-Rmin
+  Rad = lh_inp%Rmax-lh_inp%Raxis
+  If ( Cos(T) .LT. 0.0 ) Rad=lh_inp%Raxis-lh_inp%Rmin
   CosT = Abs(Cos(T))+1.0e-20_fp
   SinT = Abs(Sin(T))+1.0e-20_fp
-  Rad  = min(Rad/CosT, Zmax/SinT)
+  Rad  = min(Rad/CosT, lh_inp%Zmax/SinT)
   rstar= -SEARCHINCR
   drad = abs(rstar)
 
 5     do I=1,10000
      Rad = Rad - drad
-     r    = Rmaj + Rad*Cos(T)
+     r    = lh_inp%Raxis + Rad*Cos(T)
      z    =        Rad*Sin(T)
      Kpol = omega*enpol/vc
      Ktor = omega*enpar/vc
@@ -84,7 +85,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       Btot2= Bpol2 + (RBphi/r)**2
       Bpol = sqrt(Bpol2)
    
-      Sig  = (r-Rmaj)*Bz - z*Br
+      Sig  = (r-lh_inp%Raxis)*Bz - z*Br
       If (Sig.LT.0.0) Bpol = -Bpol
       Kpar2 = (Kpol*Bpol+Ktor*RBphi/R)**2/Btot2
       call lscsq_Eps( r, z, Kpar2, 0.0)
@@ -105,15 +106,17 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       endif
  
       CALL lscsq_ZPLRCnr(3,Azplr,ZC)
+      ! write(0,*) 'Azplr ', Azplr
+      ! write(0,*) 'zc ', zc
 !     Finds Zeroes of a Polynomial with Laguerre's method if
 !     Real Coefficients
 !     using Numerical Recipes code so we dont depend on IMSL
       zr1 = REAL(zc(1),kind=fp)
       zr2 = REAL(zc(2),kind=fp)
       zr3 = REAL(zc(3),kind=fp)
-      zi1 = AIMAG(zc(1))
-      zi2 = AIMAG(zc(2))
-      zi3 = AIMAG(zc(3))
+      ! zi1 = AIMAG(zc(1))
+      ! zi2 = AIMAG(zc(2))
+      ! zi3 = AIMAG(zc(3))
 
 !     The normal case is that all roots are real, and we see if we can start.
 22    continue
@@ -157,28 +160,28 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
 
   Kper=sqrt(abs(Y(4)**2+Y(5)**2+(Y(6)/Y(1))**2-Kpar2))
 
-  RzindOld = (Psi-PsiMin)/DelPsi + 1.5_fp
+  RzindOld = (Psi-lh_inp%plflx(1))/DelPsi + 1.5_fp
   RE41 = RzindOld
   IzindOld = int(RE41)
 !  izindold = minloc(abs(psiary-psi),1)
  
-  izind(1,iray) = IzindOld
-  rzind(1,iray) = RzindOld
-  PowrRy(1,iray)   = 1.0_fp
-  RofRay(1,iray)   = y(1)
-  ZofRay(1,iray)   = y(2)
-  PofRay(1,iray)   = y(3)
-  NparRy(1,iray)   = sqrt(Kpar2)/sqrt(woc2)
-  NperRy(1,iray)   = Kper/sqrt(woc2)
-  rtPsRy(1,iray)   = sqrt((psi-psimin)/(psilim-psimin))
-  TimeRy(1,iray)   = y(7)
-  DistRy(1,iray)   = y(8)
-  NeofRy(1,iray)   = pe2/lh_const%Pe2Fac*1.0e+14_fp
-  BthRay(1,iray)   = sqrt(Br**2+Bz**2)
-  BphRay(1,iray)   = RBphi/RofRay(1,iray)
-  DetrRy(1,iray)   = det/max(abs(d1),abs(d2),abs(d4))
-  tenter(1,iray)   = y(7)
-  senter(1,iray)   = y(8)
+  izind(1,iray)  = IzindOld
+  rzind(1,iray)  = RzindOld
+  PowrRy(1,iray) = 1.0_fp
+  RofRay(1,iray) = y(1)
+  ZofRay(1,iray) = y(2)
+  PofRay(1,iray) = y(3)
+  NparRy(1,iray) = sqrt(Kpar2)/sqrt(woc2)
+  NperRy(1,iray) = Kper/sqrt(woc2)
+  rtPsRy(1,iray) = sqrt((psi-lh_inp%plflx(1))/(lh_inp%plflx(npsij)-lh_inp%plflx(1)))
+  TimeRy(1,iray) = y(7)
+  DistRy(1,iray) = y(8)
+  NeofRy(1,iray) = pe2/lh_const%Pe2Fac*1.0e+14_fp
+  BthRay(1,iray) = sqrt(Br**2+Bz**2)
+  BphRay(1,iray) = RBphi/RofRay(1,iray)
+  DetrRy(1,iray) = det/max(abs(d1),abs(d2),abs(d4))
+  tenter(1,iray) = y(7)
+  senter(1,iray) = y(8)
 
 end subroutine lscsq_rayini
 !                                                                      |
@@ -195,12 +198,12 @@ SUBROUTINE lscsq_zplrcnr (degree, coefr, zeroc)
   integer :: degree, i, polish
   integer, parameter :: degmax=10
   real(fp), dimension(degree+1) :: coefr
-  complex, dimension(degmax+1) :: coefc
-  complex, dimension(degree) :: zeroc
+  complex(fp), dimension(degmax+1) :: coefc
+  complex(fp), dimension(degree) :: zeroc
 
   ! zroots needs complex coef's
   do i = 1, degree+1
-     coefc(i) = cmplx ( coefr(i) , 0.0_fp )
+     coefc(i) = cmplx ( coefr(i) , 0.0_fp , kind=fp)
   enddo
  
   polish = 1
@@ -227,10 +230,10 @@ SUBROUTINE lscsq_laguernr ( coef, degree, x, epsilon, polish )
  
   integer :: degree, iter, j, polish
   integer :: maxit=100
-  complex :: czero=(0.0_fp,0.0_fp)
+  complex(fp) :: czero=(0.0_fp,0.0_fp)
 
-  complex :: coef(degree+1)
-  complex :: x, dx, x1,b,d,f,g,h,sq,gp,gm,g2
+  complex(fp) :: coef(degree+1)
+  complex(fp) :: x, dx, x1,b,d,f,g,h,sq,gp,gm,g2
   real(fp) :: epss = 6.0e-7_fp
 
   real(fp) :: epsilon, err, abx, cdx
@@ -297,7 +300,7 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
       INTEGER degree, i, j, jj, polish
   integer, parameter :: maxdegre=101
   real(fp) :: epsilon = 1.0e-6_fp
-  complex :: coef(degree+1), x, b, c, roots(degree), defl(MAXDEGRE)
+  complex(fp) :: coef(degree+1), x, b, c, roots(degree), defl(MAXDEGRE)
 !
 !                                       Copy coef's for successive deflation
 
@@ -305,10 +308,10 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
 !
   do j = degree, 1, -1
      ! Start at 0 to favor smallest remaining root
-     x = CMPLX ( 0.0_fp, 0.0_fp )
+     x = CMPLX ( 0.0_fp, 0.0_fp, kind=fp )
      CALL lscsq_laguernr ( defl, j, x, EPSILON, 0 )
-     if (abs(AIMAG(x)).LE.(2.0_fp*EPSILON**2*abs(REAL(x,kind=fp))))       &
-            x = CMPLX(REAL(x,kind=fp),0.0_fp)
+     if (abs(AIMAG(x)).LE.(2.0_fp*EPSILON**2*abs(REAL(x))) )      &
+        x = cmplx(REAL(x,kind=fp),0.0_fp , kind=fp)
      roots( j ) = x
      b = defl( j+1 )
      ! Forward deflation

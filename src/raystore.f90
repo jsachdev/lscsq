@@ -5,7 +5,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   use lscsq_mod, only : qe_eV, me_g
   use lscsq_mod, only: Ezsq,distry,woc2,y,detrry, iray
   use lscsq_mod, only: izone, delpsi,Powrry,RofRay,zofray,rzind
-  use lscsq_mod, only: pofray, nparry, nperry,psimin,psilim, vpar, lstop
+  use lscsq_mod, only: pofray, nparry, nperry, vpar, lstop, npsij
   use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
   use lscsq_mod, only: d1, d2, d4, power, npar, iray, dlnPdsK, dlnPdsX
   use lscsq_mod, only: epsz, ecyc2, Epari, epql, epsl, izind, ivind, dvol
@@ -13,7 +13,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   use lscsq_mod, only: Epar, Eper, Exy, epsq
   use lscsq_mod, only: nzones, psiary, npsi
   use lscsq_mod, only: senter, tenter, sleave, tleave
-  use lscsq_mod, only: lh_const, lh_out
+  use lscsq_mod, only: lh_const, lh_out, lh_inp
   implicit none
 
 
@@ -284,7 +284,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   PofRay(izone,iray)   = y(3)
   NparRy(izone,iray)   = Kpar/woc
   NperRy(izone,iray)   = Kper/woc
-  rtPsRy(izone,iray)   = sqrt( (psi-psimin)/(psilim-psimin) )
+  rtPsRy(izone,iray)   = sqrt( (psi-lh_inp%plflx(1))/(lh_inp%plflx(npsij)-lh_inp%plflx(1)) )
   TimeRy(izone,iray)   = y(7)
   DistRy(izone,iray)   = y(8)
   NeofRy(izone,iray)   = pe2/lh_const%Pe2Fac * 1.0e+14
@@ -298,7 +298,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
 
   DetrRy(izone,iray) = det
 
-  RzindNew = (Psi-PsiMin)/DelPsi + 1.5_fp
+  RzindNew = (Psi-lh_inp%plflx(1))/DelPsi + 1.5_fp
   RE41     =  RzindNew
   IzindNew = int(RE41)
 !  izindnew = minloc(abs(psiary-psi),1)

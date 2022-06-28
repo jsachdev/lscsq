@@ -12,12 +12,8 @@ program driver
   integer :: j0, j, i, k, kk, idum, n
 
   real(fp) :: zchar, zhydmass
-  real(fp) :: tbtemp
   real(fp) :: dum
 
-  real(fp) :: ZMxdJdE
-  real(fp) :: ZMxdlJdE
-  real(fp) :: ZPowAbs, Zcurtot,Zpqtot
   real(fp), dimension(:), allocatable :: zpowtsc, zcurtsc, ZdlJdlE, ZdJdE
 
   integer :: iraytr=1
@@ -28,38 +24,15 @@ program driver
 
   call alloc_profs
 
-  rmin = lh_inp%Rmin
-  rmax = lh_inp%Rmax
-  zmin = lh_inp%Zmin
-  zmax = lh_inp%Zmax
-
-  dx_grid = lh_inp%dx_grid
-  dz_grid = lh_inp%dz_grid
-
-  xmag = lh_inp%Raxis
-  zmag = lh_inp%Zaxis
-  
   allocate(psigrd(nx,nz))
   psigrd = lh_inp%psirz
 
   ! all arrays with dimension set by the external code (e.g. TRANSP) 
   ! are allocated here
 
-  TekeV = lh_inp%Te
   voltlp = lh_inp%Vloop
-  rbpvec = lh_inp%g_eq
-
-  dVlvec = lh_inp%dvol
-  iVlvec = lh_inp%vol
-
-  psivec = lh_inp%plflx
-
-  psimin = psivec(1)
-  psilim = psivec(npsij)
 
   !	--------------------------------------------------------------
-  rmaj = lh_inp%Raxis
-  btesl = lh_inp%B_axis
 
   ! here all operations
 !     pe2Fac pi2Fac convert density in ^14 cm^-3 or ^20 m^-3
@@ -81,10 +54,7 @@ program driver
   lh_const%nuNorm =    zcm3tom3*lh_const%nu0/vc**3
   lh_const%DcollNorm = lh_const%nuNorm
 
-
-  midvec = psivec
-
-  EdcVec(1:npsij) = voltlp(1:npsij)/(twopi*rmaj)
+  EdcVec(1:npsij) = voltlp(1:npsij)/(twopi*lh_inp%Raxis)
 
   pe2vec = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne
   AelVec(1:npsij) = 1.0e-20_fp*lh_const%AelFac*lh_inp%ne(1:npsij)*lh_inp%Te(1:npsij)
@@ -94,14 +64,9 @@ program driver
   AioVec(1:npsij) = 1.0e-20_fp*lh_const%AioFac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*(mp_Kg/lh_inp%mass)**2*lh_inp%Ti(1:npsij)
 
   wcei2 = lh_const%ceifac*lh_inp%ni(1)/lh_inp%ne(1)*(lh_inp%chrg/qe_eV)**2*mp_kg/lh_inp%mass
-  wcei2 = wcei2*Btesl**2
+  wcei2 = wcei2*lh_inp%B_axis**2
 
   pe2min = pe2Vec(NpsiJ)
-
-  RlcfsMax = lh_inp%Rmaxlcfs
-  RlcfsMin = lh_inp%Rminlcfs
-  zlcfsMax = lh_inp%Zmaxlcfs
-  zlcfsMin = lh_inp%Zminlcfs
 
   call nml2lsc
 
@@ -417,11 +382,10 @@ subroutine lscsq_writecdf
   integer :: vid_rray, vid_zray, vid_npar, vid_nper
   integer :: vid_pwry, vid_tmry, vid_dsry, vid_detry, vid_nery, vid_btry
   integer :: vid_rtpy, vid_pray,vid_edcin,vid_edcou,vid_near,vid_tear
-  integer :: vid_psiou, vid_midou, vid_psiin, vid_midin
+  integer :: vid_psiou, vid_midou 
   integer :: vid_js, vid_jsp, vid_fe, vid_dfdv
   integer :: vid_vth, vid_neou, vid_teou, vid_nuc, vid_dc, vid_dql
   integer :: vid_pow, vid_pql, vid_nzon
-!  real(fp), dimension(npsij-1):: x
   integer :: nx_tr, nxdim, vid_x, vid_powtr, vid_curtr
   integer :: vid_bdry, vid_rbdry, vid_zbdry
 
@@ -433,15 +397,12 @@ subroutine lscsq_writecdf
   ! --------------------------------------
   ! dimensions 
   ierr=nf90_def_dim(ncid,'npsi',npsi,xdimid)
-!  ierr=nf90_def_dim(ncid,'npsij',npsij,xxdimid)
   ierr=nf90_def_dim(ncid,'nr',nx,rdimid)
   ierr=nf90_def_dim(ncid,'nz',nz,zdimid)
   ierr=nf90_def_dim(ncid,'nzon',nzones,nzonid)
   ierr=nf90_def_dim(ncid,'nv',nv,nvid)
-!  ierr=nf90_def_dim(ncid,'nx',npsij-1,nxdim)
   ierr=nf90_def_dim(ncid,'nrays',nrays,nrayid)
   ierr=nf90_def_dim(ncid,'sigma',2,sigdimid) 
-!  ierr=nf90_def_dim(ncid,'nbdry',nlcfs,nbdryid) 
 
   dimindf=(/ nvid,xdimid,sigdimid /)
   dimindr=(/ nzonid,nrayid /)
@@ -452,7 +413,6 @@ subroutine lscsq_writecdf
   ierr=nf90_def_var(ncid,'R',nf90_real,rdimid,vid_r)
   ierr=nf90_def_var(ncid,'Z',nf90_real,zdimid,vid_z)
   ierr=nf90_def_var(ncid,'vpar',nf90_real,nvid,vid_vel)
-!  ierr=nf90_def_var(ncid,'x',nf90_real,nxdim,vid_x)
   
   ierr=nf90_def_var(ncid,'Rbdry',nf90_real,nbdryid,vid_rbdry)
   ierr=nf90_def_var(ncid,'Zbdry',nf90_real,nbdryid,vid_zbdry)
@@ -471,11 +431,8 @@ subroutine lscsq_writecdf
   ierr=nf90_def_var(ncid,'Te_ou',nf90_real,xdimid,vid_Teou)
   ierr=nf90_def_var(ncid,'ne_ou',nf90_real,xdimid,vid_neou)
   ierr=nf90_def_var(ncid,'Edc_ou',nf90_real,xdimid,vid_edcou)
-!  ierr=nf90_def_var(ncid,'Edc_in',nf90_real,xxdimid,vid_edcin)
   ierr=nf90_def_var(ncid,'psi_ou',nf90_real,xdimid,vid_psiou)
-!  ierr=nf90_def_var(ncid,'psi_in',nf90_real,xxdimid,vid_psiin)
   ierr=nf90_def_var(ncid,'mid_ou',nf90_real,xdimid,vid_midou)
-!  ierr=nf90_def_var(ncid,'mid_in',nf90_real,xxdimid,vid_midin)
   ierr=nf90_def_var(ncid,'Js',nf90_real,xdimid,vid_js)
   ierr=nf90_def_var(ncid,'Jsp',nf90_real,xdimid,vid_jsp)
   ierr=nf90_def_var(ncid,'Power',nf90_real,xdimid,vid_pow)
@@ -485,8 +442,6 @@ subroutine lscsq_writecdf
   ierr=nf90_def_var(ncid,'vth',nf90_real,xdimid,vid_vth)
   ierr=nf90_def_var(ncid,'Dcoll',nf90_real,dimvx,vid_dc)
   ierr=nf90_def_var(ncid,'nucoll',nf90_real,dimvx,vid_nuc)
-!  ierr=nf90_def_var(ncid,'powtr',nf90_real,xxdimid,vid_powtr)
-!  ierr=nf90_def_var(ncid,'curtr',nf90_real,xxdimid,vid_curtr)
   ierr=nf90_def_var(ncid,'nzon',nf90_real,nrayid,vid_nzon)
 
 
@@ -494,8 +449,6 @@ subroutine lscsq_writecdf
  
   ! --------------------------------------
   ! Write variables to CDF file
-!  ierr=nf90_put_var(ncid,vid_r,xary)
-!  ierr=nf90_put_var(ncid,vid_z,zary)
   ierr=nf90_put_var(ncid,vid_psi,midary)
   if (ierr /= nf90_noerr) call handle_err(ierr)
   ierr=nf90_put_var(ncid,vid_rray,rofray)
@@ -515,10 +468,8 @@ subroutine lscsq_writecdf
   ierr=nf90_put_var(ncid,vid_neou,neary)
   ierr=nf90_put_var(ncid,vid_teou,teary)
   ierr=nf90_put_var(ncid,vid_psiou,psiary)
-  ierr=nf90_put_var(ncid,vid_psiin,psivec)
   ierr=nf90_put_var(ncid,vid_Edcou,Edcary)
   ierr=nf90_put_var(ncid,vid_Edcin,Edcvec)
-  ierr=nf90_put_var(ncid,vid_midin,midvec)
   ierr=nf90_put_var(ncid,vid_midou,midary)
 
   ierr=nf90_put_var(ncid,vid_js,js)
@@ -529,16 +480,9 @@ subroutine lscsq_writecdf
   ierr=nf90_put_var(ncid,vid_vth,vtherm)
   ierr=nf90_put_var(ncid,vid_vel,vpar)
   ierr=nf90_put_var(ncid,vid_dc,dcoll)
-!  if (ierr /= nf90_noerr) call handle_err(ierr)
   ierr=nf90_put_var(ncid,vid_nuc,nucoll)
   ierr=nf90_put_var(ncid,vid_dql,Dql)
-!  if (ierr /= nf90_noerr) call handle_err(ierr)
-!  ierr=nf90_put_var(ncid,vid_powtr,powtsc)
-!  ierr=nf90_put_var(ncid,vid_curtr,curtsc)
-!  ierr=nf90_put_var(ncid,vid_x,x)
   ierr=nf90_put_var(ncid,vid_nzon,nz_ind)
-!  ierr=nf90_put_var(ncid,vid_rbdry,rlcfs)
-!  ierr=nf90_put_var(ncid,vid_zbdry,zlcfs)
 
   ierr=nf90_close(ncid)
 

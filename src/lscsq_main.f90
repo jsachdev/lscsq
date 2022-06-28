@@ -399,7 +399,7 @@
 subroutine lscsq_main(iRayTrsx, iErrorx)
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: rmax,rmaj,nrays, nzones, npsij, ind_ray
+  use lscsq_mod, only: nrays, nzones, npsij, ind_ray
   use lscsq_mod, only: npols, ntors, power, npar, ntor, npol, nth
   use lscsq_mod, only: iendry,iraytrsi, i1stcall
   use lscsq_mod, only: nant, power_inp
@@ -571,10 +571,10 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
 !  if (diffujrf.gt.0.0) CALL lscsq_SmoJandP(Rmax-Rmaj)
 
   call lscsq_output(PwrFnd, JrfFnd, Pqlfnd)
-  write(*,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe10.2) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
+  write(*,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe18.11) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
   
   if (abs(sum(power_inp)-PwrFnd).GE.0.2*sum(power_inp).or.abs(PqlFnd-PwrFnd).GE.0.2*sum(power_inp)) then
-     write(ErrMsg,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe10.2) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
+     write(ErrMsg,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe18.11) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
      call lscsq_LSCwarn(ErrMsg)
   endif
   ! write a warning if power is not well absorbed or if ray/ql answers are not too close; give current too

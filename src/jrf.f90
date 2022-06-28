@@ -228,8 +228,9 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, qe_eV, vc
   use lscsq_mod, only: Dql,vpar,dfdv,muplus,jray,vpar,dvplus
-  use lscsq_mod, only: ismo,fe,ivzero,xmag,ugr,vtherm,muminus
+  use lscsq_mod, only: ismo,fe,ivzero,ugr,vtherm,muminus
   use lscsq_mod, only: Zbrary,ivlary, iitr, nuruna, nv
+  use lscsq_mod, only: lh_inp
   implicit none
 
   integer, intent(in) :: ip   ! index of flux surface
@@ -250,7 +251,7 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   iGotRuna = 0
   iSMOi = mod(iSMO,2) + 1
   FeCutOff = FeCutFac*fe(IvZero,ip,iITR)
-  eps = sqrt(iVlary(ip)/(2.0_fp*PI**2*xmag))/xmag
+  eps = sqrt(iVlary(ip)/(2.0_fp*PI**2*lh_inp%Raxis))/lh_inp%Raxis
   eps_p = eps**0.77_fp  ! calculate this only once
   xr = 3.5_fp    ! fmp - what is this?
 
@@ -303,7 +304,8 @@ end subroutine lscsq_mkj
 subroutine lscsq_GetEdc (DifAmt)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi
-  use lscsq_mod, only: Edcary, Edcvec, npsij, psivec, psiary, npsi
+  use lscsq_mod, only: lh_inp
+  use lscsq_mod, only: Edcary, Edcvec, npsij, psiary, npsi
   implicit none
 
   real(fp), intent(in) :: DifAmt
@@ -317,7 +319,7 @@ subroutine lscsq_GetEdc (DifAmt)
   Edc = 0.0
   do j = 1, npsi
      psi = PsiAry(j)
-     CALL lscsq_linr1d(NpsiJ, PsiVec, EdcVec, psi, Edc)
+     CALL lscsq_linr1d(NpsiJ, lh_inp%plflx, EdcVec, psi, Edc)
      Edc = Edc + DifAmt
      if (abs(Edc) .LE. MinEdc) then
         if (Edc .GE. 0.0 ) then

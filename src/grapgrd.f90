@@ -160,8 +160,8 @@ subroutine lscsq_plasma2d(r,z,psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
 !     AioVec is a vector of thermal correction from ions in GHz^4 frequency
 !
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: dx_grid, dz_grid, Te
-  use lscsq_mod, only: lh_const
+  use lscsq_mod, only: Te
+  use lscsq_mod, only: lh_const, lh_inp
   implicit none
 
 !     In which input cylindrical coords r,z (in m)
@@ -224,7 +224,7 @@ subroutine lscsq_plasma2d(r,z,psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
   else
      Rold = r
      Zold = z
-     call lscsq_grapLSC(r, z, psi, psderiv, NO_FORCE, dx_grid, dz_grid, isave, jsave, psimat)
+     call lscsq_grapLSC(r, z, psi, psderiv, NO_FORCE, lh_inp%dx_grid, lh_inp%dz_grid, isave, jsave, psimat)
      Br = - psderiv(0, 1) / r
      Bz = psderiv(1, 0) / r
   endif
@@ -243,10 +243,10 @@ end subroutine lscsq_plasma2d
 subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : pe2min, pe2vec, pi2vec, teKev, aiovec, aelvec 
-  use lscsq_mod, only : rmax, rmin, psimin, psilim
-  use lscsq_mod, only : RBpvec, psivec, npsij
+  use lscsq_mod, only : pe2min, pe2vec, pi2vec, aiovec, aelvec 
+  use lscsq_mod, only : npsij
   use lscsq_mod, only : Aelcoefs, aiocoefs, teecoefs, pi2coefs, pe2coefs, Rbphicoefs
+  use lscsq_mod, only : lh_inp
   implicit none
 
   real(fp), intent(inout) :: psi
@@ -292,31 +292,31 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
      return
   endif
 
-  jmin= minloc(abs(psivec-psi),1)
+  jmin= minloc(abs(lh_inp%plflx-psi),1)
 
-  CALL lscsq_grnu1d(NpsiJ,PsiVec,RBpVec,jmin,RBPhiCoefs,psi,RBphi,RBphipr)
+  CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, lh_inp%g_eq,jmin,RBPhiCoefs,psi,RBphi,RBphipr)
 
   ! enforce bounds on psi !!!!!!!!!!!!!!
-  psi =  max (psimin, psi)
-  psl =  min (psilim, psi)
+  psi =  max (lh_inp%plflx(1), psi)
+  psl =  min (lh_inp%plflx(npsij), psi)
 !     stop forcing bounds on psi on the maximum
 !     enforce bounds on psi !!!!!!!!!!!!!!
 !
-  CALL lscsq_grnu1d(NpsiJ, PsiVec, pe2Vec, jmin, pe2Coefs, psl, pe2, pe2pr)
+  CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, pe2Vec, jmin, pe2Coefs, psl, pe2, pe2pr)
 !----------------------------------------------------
 ! DMC bugfix -- handle pe2 minimum value not at bdy
 !   (prevent LSC from executing premature termination of ray following)
 
-  if((psl.lt.PsiVec(NpsiJ-1)).AND.(pe2.le.pe2min)) pe2min=pe2-1.0d-6*abs(pe2)
+  if((psl.lt.lh_inp%plflx(NpsiJ-1)).AND.(pe2.le.pe2min)) pe2min=pe2-1.0d-6*abs(pe2)
 !----------------------------------------------------
 
-  CALL lscsq_grnu1d(NpsiJ, PsiVec, Tekev, jmin, TeeCoefs, psl, Tee, Teepr)
+  CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, lh_inp%Te, jmin, TeeCoefs, psl, Tee, Teepr)
 
-  CALL lscsq_grnu1d(NpsiJ, PsiVec, pi2Vec, jmin, pi2Coefs, psl, pi2, pi2pr)
+  CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, pi2Vec, jmin, pi2Coefs, psl, pi2, pi2pr)
 
-  CALL lscsq_grnu1d(NpsiJ, PsiVec, AioVec, jmin, AioCoefs, psl, Aio, Aiopr)
+  CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, AioVec, jmin, AioCoefs, psl, Aio, Aiopr)
 
-  CALL lscsq_grnu1d(NpsiJ, PsiVec, AelVec, jmin, AelCoefs, psl, Ael, Aelpr)
+  CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, AelVec, jmin, AelCoefs, psl, Ael, Aelpr)
 
   Psiold = Psi
   RBphio = RBphi

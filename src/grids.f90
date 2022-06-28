@@ -33,17 +33,18 @@ END SUBROUTINE lscsq_mkqlsm
 SUBROUTINE lscsq_psigrids
   ! generate psi grid
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : npsi, psiary, midary
-  use lscsq_mod, only : delpsi, psimin,psilim
+  use lscsq_mod, only : npsij, npsi, psiary, midary
+  use lscsq_mod, only : delpsi !, psimin,psilim
+  use lscsq_mod, only: lh_inp
   implicit none
 
   REAL(fp) :: dpp
   INTEGER :: j
   real(fp), parameter :: ttiny=1.0e-5_fp
 
-  dpp = (psilim-psimin)*TTINY/REAL(npsi-1,kind=fp)
+  dpp = (lh_inp%plflx(npsij)-lh_inp%plflx(1))*TTINY/REAL(npsi-1,kind=fp)
   ! generate psiary grid
-  CALL lscsq_ugrid(PsiAry, npsi, psimin-dpp, psilim+dpp) ! ENFORCES INTERPOLATION !!
+  CALL lscsq_ugrid(PsiAry, npsi, lh_inp%plflx(1)-dpp, lh_inp%plflx(npsij)+dpp) ! ENFORCES INTERPOLATION !!
 
   delpsi = abs(PsiAry(2)-PsiAry(1))
   do j=1,Npsi-1
@@ -59,18 +60,22 @@ END SUBROUTINE lscsq_psigrids
 SUBROUTINE lscsq_VolCalc
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : npsi,npsij, midary, midvec, ivlvec, ivlary, dvol
+  use lscsq_mod, only : npsi,npsij, midary, ivlary, dvol
+  use lscsq_mod, only: lh_inp
   implicit none
 
   INTEGER :: ips
   REAL(fp) :: xlookup, yreturn
 
-  iVlAry(npsi) = iVlVec(NpsiJ)
- 
+  iVlAry(npsi) = lh_inp%vol(npsij)
+
+  ! fmp - I suspect there is an inconsistency between the grids that are input
+  ! and the interpolated grids, in terms of zone center and zone boundary. TBC 
   ! compute integral of volume by interpolation
   do ips = 1, Npsi-1
      xlookup = MidAry(ips)
-     CALL lscsq_linr1d(NpsiJ, MidVec, iVlVec, xlookup, yreturn)
+!     CALL lscsq_linr1d(NpsiJ, MidVec, lh_inp%vol, xlookup, yreturn)
+     CALL lscsq_linr1d(NpsiJ, lh_inp%plflx, lh_inp%vol, xlookup, yreturn)
      iVlAry(ips) = yreturn
   enddo
 
