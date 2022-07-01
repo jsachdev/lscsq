@@ -12,9 +12,11 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install gfortran
         sudo apt-get -y install libnetcdf-dev libnetcdff-dev
-        sudo add-apt-repository ppa:remik-ziemlinski/nccmp
-        sudo apt-get update
-        sudo apt-get install nccmp
+        curl -L -o nccmp-1.8.3.1.tar.gz https://gitlab.com/remikz/nccmp/-/archive/1.8.3.1/nccmp-1.8.3.1.tar.gz
+        tar -xzf nccmp-1.8.3.1.tar.gz
+        cd nccmp-1.8.3.1
+        chmod +x ./configure
+        ./configure && make && sudo make install
     - name: build
       run: |
         export FC=gfortran
