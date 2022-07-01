@@ -207,12 +207,12 @@ subroutine lscsq_plasma2d(r,z,psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
 
   if (iread .EQ. 1 ) go to 100
   iread = 1
-  Rold  = 0.0 
-  Zold  = 0.0 
-  Psiold = 0.0  
-  Brold  = 0.0 
-  Bzold  = 0.0 
-  omcold = 0.0 
+  Rold  = 0.0_fp 
+  Zold  = 0.0_fp
+  Psiold = 0.0_fp  
+  Brold  = 0.0_fp 
+  Bzold  = 0.0_fp 
+  omcold = 0.0_fp 
 
 100  Continue
 
@@ -273,13 +273,13 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
 
   if(first_call)then
      first_call = .false.
-     Psiold = 0.0 
-     RBphio = 0.0 
-     pe2old = 0.0 
-     Teeold = 0.0  
-     pi2old = 0.0 
-     Aioold = 0.0  
-     Aelold = 0.0  
+     Psiold = 0.0_fp
+     RBphio = 0.0_fp 
+     pe2old = 0.0_fp 
+     Teeold = 0.0_fp  
+     pi2old = 0.0_fp 
+     Aioold = 0.0_fp  
+     Aelold = 0.0_fp  
   endif
 
   if(psi .EQ. psiold)then
@@ -307,7 +307,7 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
 ! DMC bugfix -- handle pe2 minimum value not at bdy
 !   (prevent LSC from executing premature termination of ray following)
 
-  if((psl.lt.lh_inp%plflx(NpsiJ-1)).AND.(pe2.le.pe2min)) pe2min=pe2-1.0d-6*abs(pe2)
+  if((psl.lt.lh_inp%plflx(NpsiJ-1)).AND.(pe2.le.pe2min)) pe2min=pe2-1.0e-6_fp*abs(pe2)
 !----------------------------------------------------
 
   CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, lh_inp%Te, jmin, TeeCoefs, psl, Tee, Teepr)
@@ -326,7 +326,7 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
   Aioold = Aio
   Aelold = Ael
   TeKevMin = 0.01_fp
-  if(Tee.le.0.) then
+  if(Tee.le.0.0_fp) then
      write(mes, '(a, e14.7)') ' negative temperature correction ', Tee
      call lscsq_LSCwarn(mes)
      Tee = TeKevMin

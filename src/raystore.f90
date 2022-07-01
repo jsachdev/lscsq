@@ -228,11 +228,11 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   dDdEparOld = (Qpar*(Qpar+Kper2)-woc4*Exy**2)
   dDdEpar    = (Qpar+kper2)*kpar2*kper2 / (kper2-woc2*Epar)
 
-  EparI = 0.
+  EparI = 0.0_fp
   veow2 = 0.0445e-04_fp*tee/fghz(iray)**2
   psie2 = 2.0_fp*veow2*kpar2
   ! Trying to avoid overflows here.
-  if ( psie2 .gt. 0.02 ) then
+  if ( psie2 .gt. 0.02_fp ) then
      psie2 = 1.0_fp/psie2
      EparI = 2.0_fp*sqrt(pi)*epsq*psie2*sqrt(psie2)*exp(-psie2)
   endif
@@ -287,7 +287,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   rtPsRy(izone,iray)   = sqrt( (psi-lh_inp%plflx(1))/(lh_inp%plflx(npsij)-lh_inp%plflx(1)) )
   TimeRy(izone,iray)   = y(7)
   DistRy(izone,iray)   = y(8)
-  NeofRy(izone,iray)   = pe2/lh_const%Pe2Fac * 1.0e+14
+  NeofRy(izone,iray)   = pe2/lh_const%Pe2Fac * 1.0e+14_fp
   BthRay(izone,iray)   = Bpol
   BphRay(izone,iray)   = Bphi
   det = lscsq_DispRela ( y(1) , y(2) , y(4) , y(5) , y(6)  )
@@ -353,9 +353,9 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
         write(ErrMsg,'('' Ez2<0!zn ind iry epsL epsZ:'', i6,i6,i6,1pe10.2,1x,1pe10.2)')   &
                      izone, IzindNew, iray, epsL, epsZ
         CALL lscsq_LSCwarn( ErrMsg)
-        ezsq(izone,iray)   = 0.0
-        dlnPdsK(izone,iray)= 0.0
-        dlnPdsX(izone,iray)= 0.0
+        ezsq(izone,iray)   = 0.0_fp
+        dlnPdsK(izone,iray)= 0.0_fp
+        dlnPdsX(izone,iray)= 0.0_fp
      endif
      ! Dont forget to save the integers.
 
@@ -431,25 +431,25 @@ subroutine lscsq_RyZnInit
   implicit none
 
   !     Initialize  ray zones    -----------------------|
-  RofRay (1:nzones,1:nrays) = 0.0
-  ZofRay (1:nzones,1:nrays) = 0.0
-  PofRay (1:nzones,1:nrays) = 0.0
-  NperRy (1:nzones,1:nrays) = 0.0
-  NparRy (1:nzones,1:nrays) = 0.0
-  rtPsRy (1:nzones,1:nrays) = 0.0
-  PowrRy (1:nzones,1:nrays) = 0.0
-  TimeRy (1:nzones,1:nrays) = 0.0
-  DistRy (1:nzones,1:nrays) = 0.0
-  DetrRy (1:nzones,1:nrays) = 0.0
+  RofRay (1:nzones,1:nrays) = 0.0_fp
+  ZofRay (1:nzones,1:nrays) = 0.0_fp
+  PofRay (1:nzones,1:nrays) = 0.0_fp
+  NperRy (1:nzones,1:nrays) = 0.0_fp
+  NparRy (1:nzones,1:nrays) = 0.0_fp
+  rtPsRy (1:nzones,1:nrays) = 0.0_fp
+  PowrRy (1:nzones,1:nrays) = 0.0_fp
+  TimeRy (1:nzones,1:nrays) = 0.0_fp
+  DistRy (1:nzones,1:nrays) = 0.0_fp
+  DetrRy (1:nzones,1:nrays) = 0.0_fp
 
-  ezsq (1:nzones,1:nrays) = 0.0
-  dlnPds (1:nzones,1:nrays) = 0.0
-  dlnPdsK(1:nzones,1:nrays) = 0.0
-  dlnPdsX(1:nzones,1:nrays) = 0.0
+  ezsq (1:nzones,1:nrays) = 0.0_fp
+  dlnPds (1:nzones,1:nrays) = 0.0_fp
+  dlnPdsK(1:nzones,1:nrays) = 0.0_fp
+  dlnPdsX(1:nzones,1:nrays) = 0.0_fp
 
   izind(1:nzones,1:nrays) = 0
   ivind(1:nzones,1:nrays) = 0
-  npar(2:nzones,1:nrays) = 0.0   ! But do npar separately since the
+  npar(2:nzones,1:nrays) = 0.0_fp   ! But do npar separately since the
 
   NparRy(1,1:nrays) = npar(1,1:nrays)
 

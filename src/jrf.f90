@@ -103,10 +103,10 @@ SUBROUTINE lscsq_JdepCalc
   call lscsq_GetEdc(0.0_fp)
   ! Fill array EdcAry
 
-  jray(1:nv,1:npsi) = 0.0
+  jray(1:nv,1:npsi) = 0.0_fp
   CALL lscsq_VmaxCalc
   nGotRuna = 0
-  vnormnOK(1:npsi) = 0.0
+  vnormnOK(1:npsi) = 0.0_fp
 
   do ip = 1, npsi
      CALL lscsq_jnorm(ip)
@@ -115,7 +115,7 @@ SUBROUTINE lscsq_JdepCalc
      !    if you are trying to drive current in cooperation with the electric field
      !    at v/vrun you have had it.  If trying to drive against the electric field
      !    you can go up to v/vrun of 2 before runaways take over.
-     if (EdcAry(ip) .GE. 0.0 ) then
+     if (EdcAry(ip) .GE. 0.0_fp ) then
         vnormPos(ip) = VparMaxP(ip)/vnorm 
         vnormNeg(ip) = 0.5_fp*VparMaxN(ip)/vnorm 
      else
@@ -246,7 +246,7 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   real(fp) :: eps_p
 
 !     compute jrf driven, jd, at flux surface ip
-  jd = 0.0
+  jd = 0.0_fp
   constfac = 1.0e6_fp*qe_eV*vc/nuruna   
   iGotRuna = 0
   iSMOi = mod(iSMO,2) + 1
@@ -316,13 +316,13 @@ subroutine lscsq_GetEdc (DifAmt)
   ! and intended to be something like 0.0001 when we are trying to form
   ! the derivative   d ln J / d ln E
 
-  Edc = 0.0
+  Edc = 0.0_fp
   do j = 1, npsi
      psi = PsiAry(j)
      CALL lscsq_linr1d(NpsiJ, lh_inp%plflx, EdcVec, psi, Edc)
      Edc = Edc + DifAmt
      if (abs(Edc) .LE. MinEdc) then
-        if (Edc .GE. 0.0 ) then
+        if (Edc .GE. 0.0_fp ) then
            Edc = +MinEdc
         else
            Edc = -MinEdc
@@ -348,9 +348,9 @@ subroutine lscsq_ddtNrnJrn (ip,nDot, jDot, vRunAwayIndex)
  
   iSMOi = mod(iSMO,2) + 1
 
-  nDot= 0.0
-  JDot= 0.0
-  vRunAwayIndex= 0.0
+  nDot= 0.0_fp
+  JDot= 0.0_fp
+  vRunAwayIndex= 0.0_fp
   if (ivrun .GT. 1 .and. ivrun .LT. nv ) then
      nDot =             Dql(ivrun, ip, iSMO) * dfdv(ivrun,ip,iSMOi)
      jDot = vpar(ivrun)*Dql(ivrun, ip, iSMO) * dfdv(ivrun,ip,iSMOi)

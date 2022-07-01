@@ -78,9 +78,9 @@ subroutine nml2lsc
      fghz(i1:i2) = fghz_ant(i)
   enddo
  
-  if (DiffuJrf .LT. 0.0) DiffuJrf = 0.00
-  if (PrfSpred.LT.0.0 .or. (DiffuJrf.EQ.0.0 .and. PrfSpred.GT.0.0)) PrfSpred = 0.00
-  if (PrfSpred.GT.1.0)  PrfSpred = 1.0
+  if (DiffuJrf .LT. 0.0_fp) DiffuJrf = 0.0_fp
+  if (PrfSpred.LT.0.0_fp .or. (DiffuJrf.EQ.0.0_fp .and. PrfSpred.GT.0.0_fp)) PrfSpred = 0.0_fp
+  if (PrfSpred.GT.1.0_fp)  PrfSpred = 1.0_fp
   if (nparmin.GE.nparmax) then
      tmpdum = nparmax
      nparmax = nparmin+1.0e-3_fp
@@ -111,26 +111,26 @@ subroutine nml2lsc
   endif
   if ( nsmw .LT. nsmoo/8) CALL lscsq_LSCwarn (' nsmoo-width seems too SMALL ')
   if ( nsmw .GE. nsmoo) CALL lscsq_LSCwarn (' nsmoo-width seems too LARGE ')
-  if ( WeghtItr .GT. 1.0 .or. WeghtItr .LT. 0.0 ) then
-     WeghtItr = 0.5
+  if ( WeghtItr .GT. 1.0_fp .or. WeghtItr .LT. 0.0_fp ) then
+     WeghtItr = 0.5_fp
      CALL lscsq_LSCwarn (' WeghtItr set to 0.50 ')
   endif
-  if ( TailTeps .GT. 0.00 .and. TailNeps .GT. 0.00 ) then
+  if ( TailTeps .GT. 0.0_fp .and. TailNeps .GT. 0.0_fp ) then
      TailPeps = TailNeps/TailTeps
-  else if (TailTeps .GT. 0.00 .and. TailPeps .GT. 0.00 ) then
+  else if (TailTeps .GT. 0.0_fp .and. TailPeps .GT. 0.0_fp ) then
      TailNeps = TailPeps*TailTeps
-  else if (TailNeps .GT. 0.00 .and. TailPeps .GT. 0.00 ) then
+  else if (TailNeps .GT. 0.0_fp .and. TailPeps .GT. 0.0_fp ) then
      TailTeps = TailNeps/TailPeps
   else
-     TailTeps = 0.00
-     TailNeps = 0.00
-     TailPeps = 0.00
+     TailTeps = 0.0_fp
+     TailNeps = 0.0_fp
+     TailPeps = 0.0_fp
   endif
-  if (TailTeps.GT.0.3 .or. TailPeps.GT.0.3 .or. TailNeps.GT.0.1 ) then
+  if (TailTeps.GT.0.3_fp .or. TailPeps.GT.0.3_fp .or. TailNeps.GT.0.1_fp ) then
      CALL lscsq_LSCwarn(' Too much fast electron tail')
-     TailTeps = 0.00
-     TailNeps = 0.00
-     TailPeps = 0.00
+     TailTeps = 0.0_fp
+     TailNeps = 0.0_fp
+     TailPeps = 0.0_fp
   endif
 
 

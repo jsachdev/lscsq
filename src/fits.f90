@@ -78,16 +78,16 @@ implicit none
 
       DATA                                                              &
      &     RpZ01a0,  RpZ01a1,  RpZ01a2,  RpZ01a3,  RpZ01b2,  RpZ01b3 /  &
-     &    -3.68063,  4.23913, -4.55894, -0.39755, -1.22774,  1.41450 /
+     &    -3.68063_fp,  4.23913_fp, -4.55894_fp, -0.39755_fp, -1.22774_fp,  1.41450_fp /
       DATA                                                              &
      &     RpZ02a0,  RpZ02a1,  RpZ02a2,  RpZ02a3,  RpZ02b2,  RpZ02b3 /  &
-     &    -4.97636,-16.09015,  0.83188,  0.21737,  6.84615, -0.98649 /
+     &    -4.97636_fp,-16.09015_fp,  0.83188_fp,  0.21737_fp,  6.84615_fp, -0.98649_fp /
       DATA                                                              &
      &     RpZ05a0,  RpZ05a1,  RpZ05a2,  RpZ05a3,  RpZ05b2,  RpZ05b3 /  &
-     &    -4.27687, -4.33629,  0.30338,  0.05697,  3.21315, -0.47749 /
+     &    -4.27687_fp, -4.33629_fp,  0.30338_fp,  0.05697_fp,  3.21315_fp, -0.47749_fp /
       DATA                                                              &
      &     RpZ10a0,  RpZ10a1,  RpZ10a2,  RpZ10a3,  RpZ10b2,  RpZ10b3 /  &
-     &    -4.94597, -1.53482,  0.10112,  0.03087,  2.45288, -0.36896 /
+     &    -4.94597_fp, -1.53482_fp,  0.10112_fp,  0.03087_fp,  2.45288_fp, -0.36896_fp /
 
 !
       u    = abs(uGiven)
@@ -97,8 +97,8 @@ implicit none
 !     .                                 Electrons of velocity less than
 !     .                                 the runaway velocity simply do not
 !     .                                 run away:
-      if ( u*u .LE. 1.d0 ) then
-        lscsq_RunProb = 0.d0
+      if ( u*u .LE. 1.0_fp ) then
+        lscsq_RunProb = 0.0_fp
         return
       endif
 !
@@ -106,42 +106,42 @@ implicit none
 !     does not depend much on Z.  However, there is no fit given in the
 !     paper, even though a graph is given.  This is MY crude fit to
 !     the Fig. 2 of the reference.
-      if ( Mu .LE. -0.90d0 ) then
-        x = 0.85 * (10.d0/Z)**2 * ( (u*u-1.d0)/3. )**2
-        if (x .GT. 0.85d0) x = 1.0d0 - 0.15*exp(-(x-0.85d0)**2)
+      if ( Mu .LE. -0.90_fp ) then
+        x = 0.85_fp * (10.0_fp/Z)**2 * ( (u*u-1.0_fp)/3.0_fp )**2
+        if (x .GT. 0.85_fp) x = 1.0_fp - 0.15_fp*exp(-(x-0.85_fp)**2)
         lscsq_RunProb = x
         return
       endif
 
 !     No fit given, no graph given for -1 < Mu < 1 , so I set RunProb to 0.0.
-      if ( Mu .GT. -0.90d0 .and. Mu .LT. 0.90d0 ) then
-        lscsq_RunProb = 0.0d0
+      if ( Mu .GT. -0.90_fp .and. Mu .LT. 0.90_fp ) then
+        lscsq_RunProb = 0.0_fp
         return
       endif
 
 !     So we are left with u > 1, and Mu = 1. (or at least Mu > 0.90)
 !     This uses the fit data from Table I., page 190.
-      x = (u - 1.d0)
+      x = (u - 1.0_fp)
       Y = x
-      if        ( Z .LE. 1.5d0 ) then
+      if        ( Z .LE. 1.5_fp ) then
         lscsq_RunProb = exp (                                             &
      &  ( RpZ01a0 + RpZ01a1*Y + RpZ01a2*Y**2 + RpZ01a3*Y**3 ) /         &
-     &  (               1.0*Y + RpZ01b2*Y**2 + RpZ01b3*Y**3 )           &
+     &  (               1.0_fp*Y + RpZ01b2*Y**2 + RpZ01b3*Y**3 )           &
      &                )
-        else if ( Z .LE. 3.0d0 ) then
+        else if ( Z .LE. 3.0_fp ) then
         lscsq_RunProb = exp (                                             &
      &  ( RpZ02a0 + RpZ02a1*Y + RpZ02a2*Y**2 + RpZ02a3*Y**3 ) /         &
-     &  (               1.0*Y + RpZ02b2*Y**2 + RpZ02b3*Y**3 )           &
+     &  (               1.0_fp*Y + RpZ02b2*Y**2 + RpZ02b3*Y**3 )           &
      &                )
-        else if ( Z .LE. 7.0d0 ) then
+        else if ( Z .LE. 7.0_fp ) then
         lscsq_RunProb = exp (                                             &
      &  ( RpZ05a0 + RpZ05a1*Y + RpZ05a2*Y**2 + RpZ05a3*Y**3 ) /         &
-     &  (               1.0*Y + RpZ05b2*Y**2 + RpZ05b3*Y**3 )           &
+     &  (               1.0_fp*Y + RpZ05b2*Y**2 + RpZ05b3*Y**3 )           &
      &                )
-        else if ( Z .LE. 10.d0 ) then
+        else if ( Z .LE. 10.0_fp ) then
         lscsq_RunProb = exp (                                             &
      &  ( RpZ10a0 + RpZ10a1*Y + RpZ10a2*Y**2 + RpZ10a3*Y**3 ) /         &
-     &  (               1.0*Y + RpZ10b2*Y**2 + RpZ10b3*Y**3 )           &
+     &  (               1.0_fp*Y + RpZ10b2*Y**2 + RpZ10b3*Y**3 )           &
      &                )
       endif
       return
@@ -169,16 +169,16 @@ implicit none
      &     WpZ10a2,  WpZ10a3,  WpZ10a4,  WpZ10b1,  WpZ10b2,  WpZ10b3
       DATA                                                              &
      &     WpZ01a2,  WpZ01a3,  WpZ01a4,  WpZ01b1,  WpZ01b2,  WpZ01b3 /  &
-     &     0.16612, -0.01495,  0.00775,  0.37136,  0.02240,  0.01645 /
+     &     0.16612_fp, -0.01495_fp,  0.00775_fp,  0.37136_fp,  0.02240_fp,  0.01645_fp /
       DATA                                                              &
      &     WpZ02a2,  WpZ02a3,  WpZ02a4,  WpZ02b1,  WpZ02b2,  WpZ02b3 /  &
-     &     0.14200, -0.04048,  0.01145,  0.12253,  0.00384,  0.02440 /
+     &     0.14200_fp, -0.04048_fp,  0.01145_fp,  0.12253_fp,  0.00384_fp,  0.02440_fp /
       DATA                                                              &
      &     WpZ05a2,  WpZ05a3,  WpZ05a4,  WpZ05b1,  WpZ05b2,  WpZ05b3 /  &
-     &     0.09880, -0.05152,  0.01113, -0.19484,  0.00559,  0.02362 /
+     &     0.09880_fp, -0.05152_fp,  0.01113_fp, -0.19484_fp,  0.00559_fp,  0.02362_fp /
       DATA                                                              &
      &     WpZ10a2,  WpZ10a3,  WpZ10a4,  WpZ10b1,  WpZ10b2,  WpZ10b3 /  &
-     &     0.06537, -0.03895,  0.00738, -0.32456,  0.02797,  0.01526 /
+     &     0.06537_fp, -0.03895_fp,  0.00738_fp, -0.32456_fp,  0.02797_fp,  0.01526_fp /
 
 
       real(fp)                                                              &
@@ -188,16 +188,16 @@ implicit none
      &     WmZ10a2,  WmZ10a3,  WmZ10a4,  WmZ10a5
       DATA                                                              &
      &     WmZ01a2,  WmZ01a3,  WmZ01a4,  WmZ01a5 /                      &
-     &    -0.16483, -0.13420,  0.15346, -0.24314 /
+     &    -0.16483_fp, -0.13420_fp,  0.15346_fp, -0.24314_fp /
       DATA                                                              &
      &     WmZ02a2,  WmZ02a3,  WmZ02a4,  WmZ02a5 /                      &
-     &    -0.14186, -0.09297,  0.06661, -0.12870 /
+     &    -0.14186_fp, -0.09297_fp,  0.06661_fp, -0.12870_fp /
       DATA                                                              &
      &     WmZ05a2,  WmZ05a3,  WmZ05a4,  WmZ05a5 /                      &
-     &    -0.09975, -0.04781,  0.00606, -0.03545 /
+     &    -0.09975_fp, -0.04781_fp,  0.00606_fp, -0.03545_fp /
       DATA                                                              &
      &     WmZ10a2,  WmZ10a3,  WmZ10a4,  WmZ10a5 /                      &
-     &    -0.06651, -0.02797, -0.00247, -0.00934 /
+     &    -0.06651_fp, -0.02797_fp, -0.00247_fp, -0.00934_fp /
 !
 !
       u    = abs(uGiven)
@@ -207,9 +207,9 @@ implicit none
 !
 !     If Mu < 0.5, then use the MACSYMA-derived formula of page 191.
       U02 = u*u
-      if ( U02 .LE. 0.25d0 ) then
+      if ( U02 .LE. 0.25_fp ) then
 
-        Mu0 = 1.0d0
+        Mu0 = 1.0_fp
         Mu1 = Mu
         Mu2 = Mu*Mu
         Mu3 = Mu*Mu2
@@ -221,17 +221,17 @@ implicit none
         U10 = U04*U06
         Y   = Z
 !       --------------------------------------------------------------|
-        lscsq_WsloDwn = Mu1 * U04 / (5.+Y)                                &
-     &   -    (2. + Y + 3.*Mu2)                                * U06 /  &
-     &                                     ( 3.*(3.+Y)*(5.+Y) )         &
-     &   + 2.*( (24.+19.*Y+3.*Y**2)*Mu1 + (9.+Y)*Mu3 )         * U08 /  &
-     &                       ( (3.+Y)*(5.+Y)*(7.+3.*Y)*(9.+Y) )         &
+        lscsq_WsloDwn = Mu1 * U04 / (5.0_fp+Y)                                &
+     &   -    (2.0_fp + Y + 3.0_fp*Mu2)                                * U06 /  &
+     &                                     ( 3.0_fp*(3.0_fp+Y)*(5.0_fp+Y) )         &
+     &   + 2.0_fp*( (24.0_fp+19.0_fp*Y+3.0_fp*Y**2)*Mu1 + (9.0_fp+Y)*Mu3 )         * U08 /  &
+     &                       ( (3.0_fp+Y)*(5.0_fp+Y)*(7.0_fp+3.0_fp*Y)*(9.0_fp+Y) )         &
      &  -(                                                              &
-     &    (1041.+1864.*Y + 1189.*Y**2 + 316.*Y**3 + 30.*Y**4 ) * Mu0    &
-     &   +( 417.+ 497.*Y +  181.*Y**2 +  21.*Y**3) * 10.       * Mu2    &
-     &   +  (9.+Y)*(13.+3.*Y)                      *  5.       * Mu4    &
+     &    (1041.0_fp+1864.0_fp*Y + 1189.0_fp*Y**2 + 316.0_fp*Y**3 + 30.0_fp*Y**4 ) * Mu0    &
+     &   +( 417.0_fp+ 497.0_fp*Y +  181.0_fp*Y**2 +  21.0_fp*Y**3) * 10.0_fp       * Mu2    &
+     &   +  (9.0_fp+Y)*(13.0_fp+3.0_fp*Y)                      *  5.0_fp       * Mu4    &
      &   )                                                     * U10 /  &
-     &      ( 5.*(2.+Y)*(3.+Y)*(5.+Y)*(7.+3.*Y)*(9.+Y)*(13.+3.*Y) )
+     &      ( 5.0_fp*(2.0_fp+Y)*(3.0_fp+Y)*(5.0_fp+Y)*(7.0_fp+3.0_fp*Y)*(9.0_fp+Y)*(13.0_fp+3.0_fp*Y) )
 
 !       --------------------------------------------------------------|
 
@@ -240,8 +240,8 @@ implicit none
 
 !     So if u > 0.5 but -1 < Mu < 1 , then set WsloDwn to 0.00
 !     The paper gives no fits for this region, but Fig. 4 does graph it.
-      if ( Mu .GT. -0.90d0 .and. Mu .LT. 0.90d0 ) then
-        lscsq_WsloDwn = 0.00d0
+      if ( Mu .GT. -0.90_fp .and. Mu .LT. 0.90_fp ) then
+        lscsq_WsloDwn = 0.00_fp
         return
       endif
 
@@ -250,38 +250,38 @@ implicit none
       Y = x
 !     Mu is +1, so use the Table II. on page 190.
 !     This is valid for u < 5.
-      if ( Mu .GE. 0.90d0 .and. u .LE. 5.0d0 ) then
-             if ( Z  .LE. 1.5d0  )  then
+      if ( Mu .GE. 0.90_fp .and. u .LE. 5.0_fp ) then
+             if ( Z  .LE. 1.5_fp  )  then
                 lscsq_WsloDwn =                                           &
      &                 ( WpZ01a2*Y**2 + WpZ01a3*Y**3 + Wpz01a4*Y**4 ) / &
-     &            ( 1. + WpZ01b1*Y    + WpZ01b2*Y**2 + WpZ01b3*Y**3 )
-        else if ( Z  .LE. 3.0d0  )  then
+     &            ( 1.0_fp + WpZ01b1*Y    + WpZ01b2*Y**2 + WpZ01b3*Y**3 )
+        else if ( Z  .LE. 3.0_fp  )  then
                 lscsq_WsloDwn =                                           &
      &                 ( WpZ02a2*Y**2 + WpZ02a3*Y**3 + Wpz02a4*Y**4 ) / &
-     &            ( 1. + WpZ02b1*Y    + WpZ02b2*Y**2 + WpZ02b3*Y**3 )
+     &            ( 1.0_fp + WpZ02b1*Y    + WpZ02b2*Y**2 + WpZ02b3*Y**3 )
 
-        else if ( Z  .LE. 7.0d0  )  then
+        else if ( Z  .LE. 7.0_fp  )  then
                 lscsq_WsloDwn =                                           &
      &                 ( WpZ05a2*Y**2 + WpZ05a3*Y**3 + Wpz05a4*Y**4 ) / &
-     &            ( 1. + WpZ05b1*Y    + WpZ05b2*Y**2 + WpZ05b3*Y**3 )
+     &            ( 1.0_fp + WpZ05b1*Y    + WpZ05b2*Y**2 + WpZ05b3*Y**3 )
 
         else
                 lscsq_WsloDwn =                                           &
      &                 ( WpZ10a2*Y**2 + WpZ10a3*Y**3 + Wpz10a4*Y**4 ) / &
-     &            ( 1. + WpZ10b1*Y    + WpZ10b2*Y**2 + WpZ10b3*Y**3 )
+     &            ( 1.0_fp + WpZ10b1*Y    + WpZ10b2*Y**2 + WpZ10b3*Y**3 )
         endif
       return
       endif
 
 !     If Mu = -1 and 0 < u < 1 then use the fit of Table III. on page 191.
-      if ( Mu .LE.-0.90d0 .and. u*u .LE. 1.0d0 ) then
-             if ( Z  .LE. 1.5d0  )  then
+      if ( Mu .LE.-0.90_fp .and. u*u .LE. 1.0_fp ) then
+             if ( Z  .LE. 1.5_fp  )  then
                 lscsq_WsloDwn = WmZ01a2*Y**2                              &
      &                 + WmZ01a3*Y**3 + WmZ01a4*Y**4 + WmZ01a5*Y**5
-        else if ( Z  .LE. 3.0d0  )  then
+        else if ( Z  .LE. 3.0_fp  )  then
                 lscsq_WsloDwn = WmZ02a2*Y**2                              &
      &                 + WmZ02a3*Y**3 + WmZ02a4*Y**4 + WmZ02a5*Y**5
-        else if ( Z  .LE. 7.0d0  )  then
+        else if ( Z  .LE. 7.0_fp  )  then
                 lscsq_WsloDwn = WmZ05a2*Y**2                              &
      &                 + WmZ05a3*Y**3 + WmZ05a4*Y**4 + WmZ05a5*Y**5
         else
@@ -292,7 +292,7 @@ implicit none
       endif
 
 !     Unanticipated input parameter, no data; set return to 0.00.
-      lscsq_WsloDwn = 0.0d0
+      lscsq_WsloDwn = 0.0_fp
       return
       END
 
@@ -317,7 +317,7 @@ implicit none
      &        dWsduou, dWsduou1, dWsduou2, dWsduou5, dWsduou10
       REAL(fp)       ONE   ,       TWO   ,       FIVE  ,       TEN
       DATA       ONE   ,       TWO   ,       FIVE  ,       TEN    /     &
-     &     1.0d0, 2.0d0, 5.0d0, 10.0d0/
+     &     1.0_fp, 2.0_fp, 5.0_fp, 10.0_fp/
 !
       Z    = ZGiven
 !
@@ -364,16 +364,16 @@ implicit none
      &    WPpZ10a1, WPpZ10a2, WPpZ10a3, WPpZ10b1, WPpZ10b2, WPpZ10b3
       DATA                                                              &
      &    WPpZ01a1, WPpZ01a2, WPpZ01a3, WPpZ01b1, WPpZ01b2, WPpZ01b3 /  &
-     &     0.66445, -0.36032,  0.07328,  0.17769, -0.25452,  0.07278 /
+     &     0.66445_fp, -0.36032_fp,  0.07328_fp,  0.17769_fp, -0.25452_fp,  0.07278_fp /
       DATA                                                              &
      &    WPpZ02a1, WPpZ02a2, WPpZ02a3, WPpZ02b1, WPpZ02b2, WPpZ02b3 /  &
-     &     0.56760, -0.38984,  0.08634, -0.04019, -0.24673,  0.08508 /
+     &     0.56760_fp, -0.38984_fp,  0.08634_fp, -0.04019_fp, -0.24673_fp,  0.08508_fp /
       DATA                                                              &
      &    WPpZ05a1, WPpZ05a2, WPpZ05a3, WPpZ05b1, WPpZ05b2, WPpZ05b3 /  &
-     &     0.39906, -0.32879,  0.07670, -0.28281, -0.16275,  0.07436 /
+     &     0.39906_fp, -0.32879_fp,  0.07670_fp, -0.28281_fp, -0.16275_fp,  0.07436_fp /
       DATA                                                              &
      &    WPpZ10a1, WPpZ10a2, WPpZ10a3, WPpZ10b1, WPpZ10b2, WPpZ10b3 /  &
-     &     0.27028, -0.23261,  0.05272, -0.39140, -0.07526,  0.04981 /
+     &     0.27028_fp, -0.23261_fp,  0.05272_fp, -0.39140_fp, -0.07526_fp,  0.04981_fp /
 
       real(fp)                                                              &
      &    WPmZ01a1, WPmZ01a2, WPmZ01a3, WPmZ01a4 ,                      &
@@ -383,16 +383,16 @@ implicit none
 
       DATA                                                              &
      &    WPmZ01a1, WPmZ01a2, WPmZ01a3, WPmZ01a4 /                      &
-     &    -0.63673, -1.39960,  3.37662, -4.23684 /
+     &    -0.63673_fp, -1.39960_fp,  3.37662_fp, -4.23684_fp /
       DATA                                                              &
      &    WPmZ02a1, WPmZ02a2, WPmZ02a3, WPmZ02a4 /                      &
-     &    -0.55777, -0.80763,  1.43144, -2.03866 /
+     &    -0.55777_fp, -0.80763_fp,  1.43144_fp, -2.03866_fp /
       DATA                                                              &
      &    WPmZ05a1, WPmZ05a2, WPmZ05a3, WPmZ05a4 /                      &
-     &    -0.39704, -0.33811,  0.23607, -0.51011 /
+     &    -0.39704_fp, -0.33811_fp,  0.23607_fp, -0.51011_fp /
       DATA                                                              &
      &    WPmZ10a1, WPmZ10a2, WPmZ10a3, WPmZ10a4 /                      &
-     &    -0.26600, -0.17342,  0.01896, -0.13349 /
+     &    -0.26600_fp, -0.17342_fp,  0.01896_fp, -0.13349_fp /
 !
 !
       u    = abs(uGiven)
@@ -403,58 +403,58 @@ implicit none
 !     .....
 !
 !     For Mu = 1 and 0 < u < 5 use Table IV. on page 191.
-      if ( Mu .GE. 0.90d0 ) then
+      if ( Mu .GE. 0.90_fp ) then
 
-             if ( u .GT. 5.0d0 ) then
+             if ( u .GT. 5.0_fp ) then
 !     .                                 If the velocity is too large, limit it
 !     .                                 to a value covered by the table, and
 !     .                                 report WhichWay the velocity is large.
-               u  = 5.0d0
+               u  = 5.0_fp
                iWhichWay = +1
              endif
 !
              x = u*u
              Y = x
 !
-             if ( Z  .LE. 1.5d0  )  then
+             if ( Z  .LE. 1.5_fp  )  then
                 dWsduou =                                               &
      &           (   WPpZ01a1*Y    + WPpZ01a2*Y**2 + WPpZ01a3*Y**3 ) /  &
-     &       ( 1. +  WPpZ01b1*Y    + WPpZ01b2*Y**2 + WPpZ01b3*Y**3 )
+     &       ( 1.0_fp +  WPpZ01b1*Y    + WPpZ01b2*Y**2 + WPpZ01b3*Y**3 )
 
-        else if ( Z  .LE. 3.0d0  )  then
+        else if ( Z  .LE. 3.0_fp  )  then
                 dWsduou =                                               &
      &           (   WPpZ02a1*Y    + WPpZ02a2*Y**2 + WPpZ02a3*Y**3 ) /  &
-     &       ( 1. +  WPpZ02b1*Y    + WPpZ02b2*Y**2 + WPpZ02b3*Y**3 )
+     &       ( 1.0_fp +  WPpZ02b1*Y    + WPpZ02b2*Y**2 + WPpZ02b3*Y**3 )
 
-        else if ( Z  .LE. 7.0d0  )  then
+        else if ( Z  .LE. 7.0_fp  )  then
                 dWsduou =                                               &
      &           (   WPpZ05a1*Y    + WPpZ05a2*Y**2 + WPpZ05a3*Y**3 ) /  &
-     &       ( 1. +  WPpZ05b1*Y    + WPpZ05b2*Y**2 + WPpZ05b3*Y**3 )
+     &       ( 1.0_fp +  WPpZ05b1*Y    + WPpZ05b2*Y**2 + WPpZ05b3*Y**3 )
 
         else
                 dWsduou =                                               &
      &           (   WPpZ10a1*Y    + WPpZ10a2*Y**2 + WPpZ10a3*Y**3 ) /  &
-     &       ( 1. +  WPpZ10b1*Y    + WPpZ10b2*Y**2 + WPpZ10b3*x**3 )
+     &       ( 1.0_fp +  WPpZ10b1*Y    + WPpZ10b2*Y**2 + WPpZ10b3*x**3 )
 
         endif
       return
       endif
 
 !     For Mu = -1 and 0 < u < 1   use Table V. on page 192.
-      if ( Mu .LE.-0.90d0 .and.  u .LE. 1.0d0 ) then
+      if ( Mu .LE.-0.90_fp .and.  u .LE. 1.0_fp ) then
 !
              x = u*u
              Y = x
 !
-             if ( Z  .LE. 1.5d0  )  then
+             if ( Z  .LE. 1.5_fp  )  then
                 dWsduou = WPmZ01a1*Y                                    &
      &                 + WPmZ01a2*Y**2 + WPmZ01a3*Y**3 + WPmZ01a4*Y**4
 
-        else if ( Z  .LE. 3.0d0  )  then
+        else if ( Z  .LE. 3.0_fp  )  then
                 dWsduou = WPmZ02a1*Y                                    &
      &                 + WPmZ02a2*Y**2 + WPmZ02a3*Y**3 + WPmZ02a4*Y**4
 
-        else if ( Z  .LE. 7.0d0  )  then
+        else if ( Z  .LE. 7.0_fp  )  then
                 dWsduou = WPmZ05a1*Y                                    &
      &                 + WPmZ05a2*Y**2 + WPmZ05a3*Y**3 + WPmZ05a4*Y**4
 
@@ -468,7 +468,7 @@ implicit none
 
 
 !     For Mu = -1 and 0 < u < 1   use Table V. on page 192.
-      if ( Mu .LE.-0.90d0 .and.  u .GT. 1.0d0 ) then
+      if ( Mu .LE.-0.90_fp .and.  u .GT. 1.0_fp ) then
 !     .                                 If the velocity is too large,
 !     .                                 damp the results at high u in such
 !     .                                 a way that the value and derivative
@@ -484,44 +484,44 @@ implicit none
 !     A0,01,02:  expansion coeficients around u^2=e01
              x = u*u
              iWhichWay = -1
-             e01 =1.0d0
+             e01 =1.0_fp
              e02=e01*e01
              e03=e01*e02
              e04=e01*e03
              e1 =(x-e01)
              e2 =(x-e01)**2
 !
-             if ( Z  .LE. 1.5d0  )  then
+             if ( Z  .LE. 1.5_fp  )  then
                 A0 =    WPmZ01a1*e01 +    WPmZ01a2*e02                  &
      &             +    WPmZ01a3*e03 +    WPmZ01a4*e04
-                A1 =    WPmZ01a1     + 2.*WPmZ01a2*e01                  &
-     &             + 3.*WPmZ01a3*e02 + 4.*WPmZ01a4*e03
+                A1 =    WPmZ01a1     + 2.0_fp*WPmZ01a2*e01                  &
+     &             + 3.0_fp*WPmZ01a3*e02 + 4.0_fp*WPmZ01a4*e03
                 A2 =                      WPmZ01a2                      &
-     &             + 3.*WPmZ01a3*e01 + 6.*WPmZ01a4*e02
+     &             + 3.0_fp*WPmZ01a3*e01 + 6.0_fp*WPmZ01a4*e02
 
-        else if ( Z  .LE. 3.0d0  )  then
+        else if ( Z  .LE. 3.0_fp  )  then
                 A0 =    WPmZ02a1*e01 +    WPmZ02a2*e02                  &
      &             +    WPmZ02a3*e03 +    WPmZ02a4*e04
-                A1 =    WPmZ02a1     + 2.*WPmZ02a2*e01                  &
-     &             + 3.*WPmZ02a3*e02 + 4.*WPmZ02a4*e03
+                A1 =    WPmZ02a1     + 2.0_fp*WPmZ02a2*e01                  &
+     &             + 3.0_fp*WPmZ02a3*e02 + 4.0_fp*WPmZ02a4*e03
                 A2 =                      WPmZ02a2                      &
-     &             + 3.*WPmZ02a3*e01 + 6.*WPmZ02a4*e02
+     &             + 3.0_fp*WPmZ02a3*e01 + 6.0_fp*WPmZ02a4*e02
 
-        else if ( Z  .LE. 7.0d0  )  then
+        else if ( Z  .LE. 7.0_fp  )  then
                 A0 =    WPmZ05a1*e01 +    WPmZ05a2*e02                  &
      &             +    WPmZ05a3*e03 +    WPmZ05a4*e04
-                A1 =    WPmZ05a1     + 2.*WPmZ05a2*e01                  &
-     &             + 3.*WPmZ05a3*e02 + 4.*WPmZ05a4*e03
+                A1 =    WPmZ05a1     + 2.0_fp*WPmZ05a2*e01                  &
+     &             + 3.0_fp*WPmZ05a3*e02 + 4.0_fp*WPmZ05a4*e03
                 A2 =                      WPmZ05a2                      &
-     &             + 3.*WPmZ05a3*e01 + 6.*WPmZ05a4*e02
+     &             + 3.0_fp*WPmZ05a3*e01 + 6.0_fp*WPmZ05a4*e02
 
         else
                 A0 =    WPmZ10a1*e01 +    WPmZ10a2*e02                  &
      &             +    WPmZ10a3*e03 +    WPmZ10a4*e04
-                A1 =    WPmZ10a1     + 2.*WPmZ10a2*e01                  &
-     &             + 3.*WPmZ10a3*e02 + 4.*WPmZ10a4*e03
+                A1 =    WPmZ10a1     + 2.0_fp*WPmZ10a2*e01                  &
+     &             + 3.0_fp*WPmZ10a3*e02 + 4.0_fp*WPmZ10a4*e03
                 A2 =                      WPmZ10a2                      &
-     &             + 3.*WPmZ10a3*e01 + 6.*WPmZ10a4*e02
+     &             + 3.0_fp*WPmZ10a3*e01 + 6.0_fp*WPmZ10a4*e02
 
 
         endif
@@ -531,7 +531,7 @@ implicit none
 
 
 !     Unanticipated parameter range, set return to 0.00.
-      dWsduou = 0.0d0
+      dWsduou = 0.0_fp
       return
       END
 !                                                                      |

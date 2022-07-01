@@ -59,7 +59,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   
   RayIniErr = 0
   Rad = lh_inp%Rmax-lh_inp%Raxis
-  If ( Cos(T) .LT. 0.0 ) Rad=lh_inp%Raxis-lh_inp%Rmin
+  If ( Cos(T) .LT. 0.0_fp ) Rad=lh_inp%Raxis-lh_inp%Rmin
   CosT = Abs(Cos(T))+1.0e-20_fp
   SinT = Abs(Sin(T))+1.0e-20_fp
   Rad  = min(Rad/CosT, lh_inp%Zmax/SinT)
@@ -72,7 +72,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
      z    =        Rad*Sin(T)
      Kpol = omega*enpol/vc
      Ktor = omega*enpar/vc
-     if (enpar.eq.0.0) then
+     if (enpar.eq.0.0_fp) then
         RayIniErr = 2
         CALL lscsq_LSCwarn(' enpar == 0 in RayIni ')
         return
@@ -86,9 +86,9 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       Bpol = sqrt(Bpol2)
    
       Sig  = (r-lh_inp%Raxis)*Bz - z*Br
-      If (Sig.LT.0.0) Bpol = -Bpol
+      If (Sig.LT.0.0_fp) Bpol = -Bpol
       Kpar2 = (Kpol*Bpol+Ktor*RBphi/R)**2/Btot2
-      call lscsq_Eps( r, z, Kpar2, 0.0)
+      call lscsq_Eps( r, z, Kpar2, 0.0_fp)
 
 10    Azplr(4) = -(aio/fghz(iray)**4 + ael)
       Azplr(3) =  Eper
@@ -98,8 +98,8 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
  
       ! Estimate the roots far from lmc
       discrimt = Azplr(2)**2-4.0_fp*Azplr(3)*Azplr(1)
-      if ( discrimt .LE. 0.0 ) then
-        discrimt = 0.0
+      if ( discrimt .LE. 0.0_fp ) then
+        discrimt = 0.0_fp
         RayIniErr= 1
         CALL lscsq_LSCwarn(' no accessibity found for this ray ')
         return
@@ -129,9 +129,9 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       if (slow .EQ. -1.0e+30_fp) cycle    
       if (lfast .EQ. 1) try = fast
       if (lfast .EQ. 0) try = slow
-24    if (try .LT. 0.0 ) cycle    
+24    if (try .LT. 0.0_fp ) cycle    
       try = try - ( Kpol*RBphi/R - Ktor*Bpol )**2/Btot2
-      if ( try .LT. 0.0 ) cycle    
+      if ( try .LT. 0.0_fp ) cycle    
       try = sqrt(try)
 
       krad = try
@@ -263,11 +263,11 @@ SUBROUTINE lscsq_laguernr ( coef, degree, x, epsilon, polish )
         g  = d / b
         g2 = g * g
         h  = g2 - 2.0_fp * f / b
-        sq =  sqrt ( (degree-1) * (degree*h - g2) )
+        sq =  sqrt ( real(degree-1,kind=fp) * (real(degree,kind=fp)*h - g2) )
         gp = g + sq
         gm = g - sq
         if (  abs (gp) .LT.  abs (gm) ) gp = gm
-        dx = degree / gp
+        dx = real(degree,kind=fp) / gp
      endif
      x1    = x - dx
      if ( x .EQ. x1 ) return
@@ -310,7 +310,7 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
      ! Start at 0 to favor smallest remaining root
      x = CMPLX ( 0.0_fp, 0.0_fp, kind=fp )
      CALL lscsq_laguernr ( defl, j, x, EPSILON, 0 )
-     if (abs(AIMAG(x)).LE.(2.0_fp*EPSILON**2*abs(REAL(x))) )      &
+     if (abs(REAL(AIMAG(x),kind=fp)).LE.(2.0_fp*EPSILON**2*abs(REAL(x,kind=fp))) )      &
         x = cmplx(REAL(x,kind=fp),0.0_fp , kind=fp)
      roots( j ) = x
      b = defl( j+1 )

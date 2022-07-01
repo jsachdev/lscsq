@@ -201,7 +201,7 @@ SUBROUTINE lscsq_RungeLSC(ninac1,accum1,rayqt1,BoundsEr)
   if(BoundsEr .ne. 0) go to 100
   y1(1:neqs) = y(1:neqs)
   f1(1:neqs) = f(1:neqs)
-  q(1:neqs) = 0.0
+  q(1:neqs) = 0.0_fp
 
   do ia=2,4
      do ib=1,4
@@ -295,10 +295,10 @@ FUNCTION lscsq_ran3(idum)
   INTEGER :: i,ii,k, inext, inextp
 !     .                                 55 dimension is special; no changes!
   integer :: ma(55)
-  integer, parameter :: mbig=1.0e9_fp
-  integer, parameter :: mseed=161803398_fp
+  integer, parameter :: mbig=1000000000
+  integer, parameter :: mseed=161803398
   integer, parameter :: mz=0
-  real(fp), parameter :: fac=1.0_fp/mbig
+  real(fp), parameter :: fac=1.0_fp/real(mbig,kind=fp)
       DATA iff /0/
 !                                       Initialize
       if(idum .LT. 0 .or. iff .EQ. 0) then
@@ -408,15 +408,15 @@ SUBROUTINE lscsq_eps ( r, z, kpar2, kper2 )
 !     this last is multiplied by (omega**2)
 
       d11er = -(aion + aelc)
-      d11ar = 0.0
+      d11ar = 0.0_fp
       d11w0 = ipsq+2.0_fp*aion*kper2
 
-      d12er = 0.0
-      d12ar = 0.0
+      d12er = 0.0_fp
+      d12ar = 0.0_fp
       d12w0 = -0.5_fp*exy
 
-      d33er = 0.0
-      d33ar = 0.0
+      d33er = 0.0_fp
+      d33ar = 0.0_fp
       d33w0 = epsq
 !      return
 
@@ -576,7 +576,7 @@ subroutine lscsq_WhchRoot (r, z, Kr, Kz, Kphi, NperFs, NperSl)
    B2m4AC = BBD2**2 - 4.0_fp*AAD1*CCD4
    NperFs = - BBD2 / (2.0_fp*AAD1)
    NperSl = NperFs
-   if (B2m4AC .GT. 0.0) then
+   if (B2m4AC .GT. 0.0_fp) then
       B2m4AC = sqrt(B2m4AC)/(2.0_fp*AAD1)
       NperFs = NperFs - B2m4AC
       NperSl = NperSl + B2m4AC

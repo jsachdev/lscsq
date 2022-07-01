@@ -58,7 +58,7 @@ subroutine lscsq_FeConvrg(iramp)
   inew = iITR
   iold = mod(inew,2) + 1
 
-  dum = 0.0  
+  dum = 0.0_fp 
   do ip=1,npsi
      do iv=2,nv-1
         dum=dum+abs(fe(iv,ip,inew)-fe(iv,ip,iold)) /              &
@@ -79,7 +79,7 @@ subroutine lscsq_rspwr(pwrlev)
   integer :: ir, itor, ipol, i1, i2, i
   real(fp), intent(in) :: pwrlev
 
-!  power(1,1:nrays) = 0.0
+!  power(1,1:nrays) = 0.0_fp
   ! initialize power on rays
 
   do i=1,nant

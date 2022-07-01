@@ -100,7 +100,7 @@ subroutine lscsq_thgrid
 
   thgrid(1:nth)=thet0
   ! generate theta grid
-  if ((nth.eq.1).or.(dthet.eq.0.0)) then
+  if ((nth.eq.1).or.(dthet.eq.0.0_fp)) then
      thgrid(1) = thet0
   else
      ! set UniformGRID into thgrid
@@ -118,7 +118,7 @@ SUBROUTINE lscsq_vgrids
 
   integer :: i
 
-  dvplus(1:nv)=0.0
+  dvplus(1:nv)=0.0_fp
 
   ! set UniformGRID into Vpar
   CALL lscsq_ugrid(Vpar, nv, Vmin, Vmax)

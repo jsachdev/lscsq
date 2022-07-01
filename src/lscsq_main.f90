@@ -708,7 +708,7 @@ subroutine lscsq_ValInit
   CALL lscsq_ProfInit    !  interpolate Ne, Ni, Te, Ti to the PsiAry grid
   CALL lscsq_FeInit      !  compute constants needed for solution of Fe ....
 !  CALL lscsq_DqlInit     !  and for solution of Dql
-  dql(1:nv,1:npsi,1:2) = 0.0
+  dql(1:nv,1:npsi,1:2) = 0.0_fp
 
 end subroutine lscsq_ValInit
 

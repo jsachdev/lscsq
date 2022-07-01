@@ -34,7 +34,7 @@ module lscsq_mod
   real(fp), parameter :: RMU0 = (4.0e-7_fp)*PI     ! permeability
   real(fp), parameter :: EPS0 = ONE/(VC*VC*RMU0)   ! permittivity
   real(fp), parameter :: usdp = rmu0
-  real(fp), parameter :: aee_amp = 9.578833391e+7  ! electron_charge/proton_mass (C*kg^-1)
+  real(fp), parameter :: aee_amp = 9.578833391e+7_fp  ! electron_charge/proton_mass (C*kg^-1)
   real(fp), parameter :: evptocm_sec = 1.384112291e+6_fp !sqrt(2*kb_keV*10^7/mp_g) 
                          !cm/sec for 1eV proton, note J=10^7 erg
   !Define conversion factors
@@ -85,46 +85,43 @@ module lscsq_mod
   real(fp) :: nparmax = 5.5_fp
   real(fp) :: npolmin = -1.0_fp
   real(fp) :: npolmax = 1.0_fp
-  real(fp) :: hstplh = 0.0
+  real(fp) :: hstplh = 0.0_fp
   real(fp) :: weghtitr=0.2_fp
-  real(fp) :: thet0   = 0.0  ! angle of launch 0=> outside midplane, .25=> top
-  real(fp) :: dthet = 0.0
+  real(fp) :: thet0   = 0.0_fp  ! angle of launch 0=> outside midplane, .25=> top
+  real(fp) :: dthet = 0.0_fp
   real(fp), dimension(:), allocatable :: thgrid
 
-  real(fp) :: diffujrf = 0.0
-  real(fp) :: prfspred = 0.0
-  real(fp):: tailteps = 0.0
-  real(fp):: tailpeps = 0.0
-  real(fp):: tailneps = 0.0
+  real(fp) :: diffujrf = 0.0_fp
+  real(fp) :: prfspred = 0.0_fp
+  real(fp):: tailteps = 0.0_fp
+  real(fp):: tailpeps = 0.0_fp
+  real(fp):: tailneps = 0.0_fp
 
-  real(fp) :: praysum = 0.0
-  real(fp) :: pqlsum  = 0.0
-  real(fp) :: ppwrsum = 0.0
+  real(fp) :: praysum = 0.0_fp
+  real(fp) :: pqlsum  = 0.0_fp
+  real(fp) :: ppwrsum = 0.0_fp
 
-  real(fp) :: TotPwr = 0.0
-  real(fp) :: enpar= 0.0   ! n_{\parallel} launched for ray being worked at the moment
-  real(fp) :: enpol=0.0   ! n_{poloidal}  launched for all rays(zero is good enough)
-  real(fp) :: enth =0.0
-  real(fp) :: omega=0.0   ! RF frequency (radians/sec)
+  real(fp) :: TotPwr = 0.0_fp
+  real(fp) :: enpar= 0.0_fp   ! n_{\parallel} launched for ray being worked at the moment
+  real(fp) :: enpol=0.0_fp   ! n_{poloidal}  launched for all rays(zero is good enough)
+  real(fp) :: enth =0.0_fp
+  real(fp) :: omega=0.0_fp   ! RF frequency (radians/sec)
 
-  real(fp) :: begin=0.0    ! value of path length to begin ray (0 at start)
-!  real(fp) :: capo2=0.0    ! \omega_{ce}\omega_{ci} / \omega^2
-                       !  no LH resonance at any density if .lt. 1
-  real(fp) :: ipsq=0.0     ! \sum_i \omega_{pi}^2 / \omega^2
-  real(fp) :: ecyc=0.0    ! \omega_{ce} / \omega
-!  real(fp) :: icyc=0.0    ! \omega_{pi} / \omega
-  real(fp) :: epsq=0.0    ! \omega_{pe}^2 / \omega^2
-  real(fp) :: ecyc2=0.0   ! ecyc^2
-  real(fp) :: wcei2=0.0   ! \omega_{ce} \omega_{cH} \sum_i ( n_i Z_i^2 / n_e) m_H/m_i
-  real(fp) :: woc2=0.0    ! \omega^2/c^2
-  real(fp) :: woc4=0.0    ! woc2^2
+  real(fp) :: begin=0.0_fp    ! value of path length to begin ray (0 at start)
+  real(fp) :: ipsq=0.0_fp     ! \sum_i \omega_{pi}^2 / \omega^2
+  real(fp) :: ecyc=0.0_fp    ! \omega_{ce} / \omega
+  real(fp) :: epsq=0.0_fp    ! \omega_{pe}^2 / \omega^2
+  real(fp) :: ecyc2=0.0_fp   ! ecyc^2
+  real(fp) :: wcei2=0.0_fp   ! \omega_{ce} \omega_{cH} \sum_i ( n_i Z_i^2 / n_e) m_H/m_i
+  real(fp) :: woc2=0.0_fp    ! \omega^2/c^2
+  real(fp) :: woc4=0.0_fp    ! woc2^2
 
   integer :: lfast = 0
   integer :: lstop = 0
-  real(fp) :: delpsi=0.0
-  real(fp) :: Te=0.0
-  real(fp) :: Ne=0.0
-  real(fp) :: pe2min = 0.0
+  real(fp) :: delpsi=0.0_fp
+  real(fp) :: Te=0.0_fp
+  real(fp) :: Ne=0.0_fp
+  real(fp) :: pe2min = 0.0_fp
 
 ! from lscsq_febins
   integer :: ivZero = 1
@@ -135,7 +132,7 @@ module lscsq_mod
   real(fp) :: vmin = -1.0_fp
   real(fp) :: vmax = +1.0_fp
 
-  real(fp) :: TailVtrn=0.0
+  real(fp) :: TailVtrn=0.0_fp
 
   real(fp), dimension(neqs) ::  f1=0.0_fp
   real(fp), dimension(neqs) ::  f2=0.0_fp
@@ -257,9 +254,7 @@ module lscsq_mod
   integer :: nz = 159
   integer :: npsij 
 
-  real(fp), dimension(:,:), allocatable :: psigrd  
-
-  real(fp), allocatable, dimension(:) :: rho, voltlp, vptemp
+  real(fp), allocatable, dimension(:) :: rho, voltlp
 
   integer(c_int), dimension(:), allocatable :: nz_ind, ok_ray
 
@@ -397,7 +392,7 @@ subroutine lscsq_allocrays
   ok_ray(1:nrays) = 1
 
   if (.not.allocated(thgrid)) allocate(thgrid(nth))
-  thgrid(1:nth) = 0.0
+  thgrid(1:nth) = 0.0_fp
   if (.not.allocated(Rofray)) allocate(RofRay(nzones,nrays))
   Rofray = 0.0_fp
   if (.not.allocated(Zofray)) allocate(ZofRay(nzones,nrays))
@@ -427,7 +422,7 @@ subroutine lscsq_allocrays
   if (.not.allocated(izind)) allocate(izind(nzones,nrays))
   izind = 0
   if (.not.allocated(rzind)) allocate(rzind(nzones,nrays))
-  rzind(1:nzones,1:nrays) = 0.0
+  rzind(1:nzones,1:nrays) = 0.0_fp
   if (.not.allocated(ivind)) allocate(ivind(nzones,nrays))
   ivind = 0
   if (.not.allocated(ezsq)) allocate(ezsq(nzones,nrays))
@@ -437,27 +432,27 @@ subroutine lscsq_allocrays
   if (.not.allocated(power)) allocate(power(nzones,nrays))
   power = 0.0_fp
   if (.not.allocated(dlnPds)) allocate(dlnPds(nzones,nrays))
-  dlnPds(1:nzones,1:nrays) = 0.0
+  dlnPds(1:nzones,1:nrays) = 0.0_fp
   if (.not.allocated(dlnPdsk)) allocate(dlnPdsk(nzones,nrays))
-!  dlnPdsk(1:nzones,1:nrays) = 0.0
+!  dlnPdsk(1:nzones,1:nrays) = 0.0_fp
   if (.not.allocated(dlnPdsx)) allocate(dlnPdsx(nzones,nrays))
-!  dlnPdsx(1:nzones,1:nrays) = 0.0
+!  dlnPdsx(1:nzones,1:nrays) = 0.0_fp
   if (.not.allocated(rfudgdmp)) allocate(rfudgdmp(nzones,nrays))
-  rfudgdmp(1:nzones,1:nrays) = 0.0
+  rfudgdmp(1:nzones,1:nrays) = 0.0_fp
 
 
   if(.not.allocated(ntor_ant)) allocate(ntor_ant(ntors,nant))
-  ntor_ant(1:ntors,1:nant) = 0.0
+  ntor_ant(1:ntors,1:nant) = 0.0_fp
   if(.not.allocated(spec_ant)) allocate(spec_ant(ntors,nant))
-  spec_ant(1:ntors,1:nant) = 0.0
+  spec_ant(1:ntors,1:nant) = 0.0_fp
   if(.not.allocated(npol_ant)) allocate(npol_ant(npols,nant))
-  npol_ant(1:npols,1:nant) = 0.0
+  npol_ant(1:npols,1:nant) = 0.0_fp
   if(.not.allocated(ntor)) allocate(ntor(ntors))
-  ntor(1:ntors) = 0.0
+  ntor(1:ntors) = 0.0_fp
   if(.not.allocated(spec)) allocate(spec(ntors))
-  spec(1:ntors) = 0.0
+  spec(1:ntors) = 0.0_fp
   if(.not.allocated(npol)) allocate(npol(npols))
-  npol(1:npols) = 0.0
+  npol(1:npols) = 0.0_fp
 
 
   if(.not.allocated(lh_out%psiary)) allocate(lh_out%psiary(nrays))
@@ -479,46 +474,47 @@ end subroutine lscsq_allocrays
 subroutine lscsq_alloc
 
   if(.not.allocated(neary)) allocate(neary(npsi))
-  neary(1:npsi) = 0.0
+  neary(1:npsi) = 0.0_fp
   if(.not.allocated(Teary)) allocate(Teary(npsi))
-  Teary(1:npsi) = 0.0
+  Teary(1:npsi) = 0.0_fp
   if(.not.allocated(psiary)) allocate(psiary(npsi))
-  psiary(1:npsi) = 0.0
+  psiary(1:npsi) = 0.0_fp
   if(.not.allocated(midary)) allocate(midary(npsi))
-  midary(1:npsi) = 0.0
+  midary(1:npsi) = 0.0_fp
   if(.not.allocated(zbrary)) allocate(zbrary(npsi))
-  zbrary(1:npsi) = 0.0
+  zbrary(1:npsi) = 0.0_fp
   if(.not.allocated(Edcary)) allocate(Edcary(npsi))
-  Edcary(1:npsi) = 0.0
+  Edcary(1:npsi) = 0.0_fp
   if(.not.allocated(Lnlary)) allocate(Lnlary(npsi))
-  Lnlary(1:npsi) = 0.0
+  Lnlary(1:npsi) = 0.0_fp
   if(.not.allocated(iVlary)) allocate(iVlary(npsi))
-  iVlary(1:npsi) = 0.0
+  iVlary(1:npsi) = 0.0_fp
   if(.not.allocated(dVol)) allocate(dVol(npsi))
-  dVol(1:npsi) = 0.0
+  dVol(1:npsi) = 0.0_fp
   if(.not.allocated(betZary)) allocate(betZary(npsi))
-  betZary(1:npsi) = 0.0
+  betZary(1:npsi) = 0.0_fp
 
   if(.not.allocated(qlsm)) allocate(qlsm(nv))
+  qlsm(1:nv) = 0.0_fp
   if(.not.allocated(dql)) allocate(dql(nv,npsi,2))
   if(.not.allocated(dcoll)) allocate(dcoll(nv,npsi))
   if(.not.allocated(nucoll)) allocate(nucoll(nv,npsi))
 
 
   if(.not.allocated(vpar)) allocate(vpar(nv))
-  vpar(1:nv) = 0.0  
+  vpar(1:nv) = 0.0_fp  
   if(.not.allocated(dvplus)) allocate(dvplus(nv))
   if(.not.allocated(vtherm)) allocate(vtherm(npsi))
-  vtherm(1:npsi) = 0.0
+  vtherm(1:npsi) = 0.0_fp
   if(.not.allocated(Fenorm)) allocate(Fenorm(npsi))
   if(.not.allocated(nu0psi)) allocate(nu0psi(npsi))
-  nu0psi(1:npsi) = 0.0  
+  nu0psi(1:npsi) = 0.0_fp  
   if(.not.allocated(FstFracn)) allocate(FstFracn(npsi))
-  fstfracn(1:npsi) = 0.0  
+  fstfracn(1:npsi) = 0.0_fp  
   if(.not.allocated(FstFracE)) allocate(FstFracE(npsi))
-  fstfrace(1:npsi) = 0.0  
+  fstfrace(1:npsi) = 0.0_fp  
   if(.not.allocated(vperpsq)) allocate(vperpsq(npsi))
-  vperpsq(1:npsi) = 0.0  
+  vperpsq(1:npsi) = 0.0_fp  
   if(.not.allocated(fe)) allocate(fe(nv,npsi,2))
   if(.not.allocated(dfdv)) allocate(dfdv(nv,npsi,2))
 
@@ -547,20 +543,20 @@ subroutine lscsq_alloc
   if(.not.allocated(Jrundot)) allocate(Jrundot(npsi))
   if(.not.allocated(vrunidx)) allocate(vrunidx(npsi))
   if(.not.allocated(irintgrl)) allocate(irintgrl(npsi))
-  irintgrl(1:npsi) = 0.0 
+  irintgrl(1:npsi) = 0.0_fp 
   if(.not.allocated(ipintgrl)) allocate(ipintgrl(npsi))
-  ipintgrl(1:npsi) = 0.0 
+  ipintgrl(1:npsi) = 0.0_fp 
   if(.not.allocated(vnormpos)) allocate(vnormpos(npsi))
-  vnormpos(1:npsi) = 0.0 
+  vnormpos(1:npsi) = 0.0_fp 
   if(.not.allocated(vnormneg)) allocate(vnormneg(npsi))
-  vnormneg(1:npsi) = 0.0 
+  vnormneg(1:npsi) = 0.0_fp 
   if(.not.allocated(vparmaxp)) allocate(vparmaxp(npsi))
-  vparmaxp(1:npsi) = 0.0 
+  vparmaxp(1:npsi) = 0.0_fp 
   if(.not.allocated(vparmaxn)) allocate(vparmaxn(npsi))
-  vparmaxn(1:npsi) = 0.0 
+  vparmaxn(1:npsi) = 0.0_fp 
   if(.not.allocated(jray)) allocate(jray(nv,npsi))
   if(.not.allocated(ugr)) allocate(ugr(nv))
-  ugr(1:nv) = 0.0 
+  ugr(1:nv) = 0.0_fp 
 
   if(.not.allocated(pwrlevel)) allocate(pwrlevel(nrampup))
   if(.not.allocated(fecvgary)) allocate(fecvgary(nrampup))

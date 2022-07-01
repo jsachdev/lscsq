@@ -11,7 +11,7 @@ SUBROUTINE lscsq_FeCalc
   real(fp), dimension(nv) :: fe_tmp 
 
   ! set to zero to start
-  fe(1:nv,1:npsi,iitr) = 0.0
+  fe(1:nv,1:npsi,iitr) = 0.0_fp
 
   ! copy normalization into fe(v = vpar(ivZero), psi)
   ! fmp - I think there is a problem here. The values of Fe at v=0 are huge in
@@ -65,7 +65,7 @@ subroutine lscsq_FePlus(fe, nuCollx, Dcollx, Dqlx, Vpar, ivZero)
   real(fp), dimension(nv)  :: lgfe
 
 
-  lgFe(ivZero) = 0.0  
+  lgFe(ivZero) = 0.0_fp
   RsltMin = exp(-ExpMax)
   do iv = ivZero, nv-1
      lgFe(iv+1)=lgFe(iv)+                                       &
@@ -81,8 +81,8 @@ subroutine lscsq_FePlus(fe, nuCollx, Dcollx, Dqlx, Vpar, ivZero)
         fe(iv) = fe(ivZero)*RsltMin
      endif
    enddo
-   fe(nv-1) = 0.0  
-   fe(nv)   = 0.0   
+   fe(nv-1) = 0.0_fp  
+   fe(nv)   = 0.0_fp   
 
 end subroutine lscsq_feplus
 !     -----------------------------------------------------------------
@@ -107,7 +107,7 @@ subroutine lscsq_FeMinus(fe, nuCollx, Dcollx, Dqlx, Vpar, ivZero)
   real(fp) :: expmax=100.0_fp
 
   ! note:  nu < 0 for iv < ivZero
-  lgFe(ivZero) = 0.0   
+  lgFe(ivZero) = 0.0_fp  
   RsltMin = exp (-ExpMax)
   do iv = ivZero-1, 1, -1
      lgFe(iv) = lgFe(iv+1) +                                      &
@@ -124,8 +124,8 @@ subroutine lscsq_FeMinus(fe, nuCollx, Dcollx, Dqlx, Vpar, ivZero)
      endif
   enddo
 
-  fe(1) = 0.0  
-  fe(2) = 0.0  
+  fe(1) = 0.0_fp  
+  fe(2) = 0.0_fp  
 
 end subroutine lscsq_FeMinus
 !     -----------------------------------------------------------------
@@ -176,7 +176,7 @@ SUBROUTINE lscsq_FeCvecs
   TailT12 = sqrt (TailTeps)
   TailT32 = sqrt (TailTeps) * TailTeps
 
-  if (TailNeps * TailTeps .GT. 0.0 ) then
+  if (TailNeps * TailTeps .GT. 0.0_fp ) then
      LogThing = (-log(TailNeps) - 0.5_fp*log(TailTeps)) /(1.0_fp-TailTeps)
   else
      LogThing = 1.0e06_fp
@@ -197,7 +197,7 @@ SUBROUTINE lscsq_FeCvecs
         Dcoll(iv, ip) = lh_const%DcollNorm * nu0psi(ip) * vthsq * hvpar * LnlAry(ip) * BetZAry(ip)
         nuColl(iv, ip) = lh_const%nuNorm * nu0psi(ip) * hvpar * v12 * LnlAry(ip) * BetZAry(ip)
  
-        if ( TailPeps .GT. 0.0 .and. abs(vpar(iv)) .GT. TransVel) then
+        if ( TailPeps .GT. 0.0_fp .and. abs(vpar(iv)) .GT. TransVel) then
            Dcoll (iv,ip) = Dcoll(iv,ip) * TailT12
            nuColl(iv,ip) = nuColl(iv,ip)* TailT32
         endif
@@ -287,27 +287,27 @@ subroutine lscsq_FeMaxw(iipsi)
   Factor  = 1.0_fp + sqrt(TailTeps)*TailNeps
   FactorM1= sqrt(TailTeps)*TailNeps
  
-  if (FactorM1 .EQ. 0.0) then
+  if (FactorM1 .EQ. 0.0_fp) then
      do iv = 3, nv-2
         argument = VthsInv*vpar(iv)**2
         if (argument .LT. TOOBIG) then
           fe(iv,iipsi,iITR) = FeNorm(iipsi)*exp(-argument)
         else
-          fe(iv,iipsi,iITR) = 0.0 
+          fe(iv,iipsi,iITR) = 0.0_fp
         endif
      enddo
  
-     fe(1   ,iipsi,iITR) = 0.0 
-     fe(2   ,iipsi,iITR) = 0.0 
-     fe(nv-1,iipsi,iITR) = 0.0 
-     fe(nv  ,iipsi,iITR) = 0.0 
+     fe(1   ,iipsi,iITR) = 0.0_fp 
+     fe(2   ,iipsi,iITR) = 0.0_fp
+     fe(nv-1,iipsi,iITR) = 0.0_fp 
+     fe(nv  ,iipsi,iITR) = 0.0_fp
   endif
  
-  if (FactorM1 .ne. 0.0 ) then
+  if (FactorM1 .ne. 0.0_fp ) then
      RsltMin = exp ( - REXPMIN )
      TransVel = vtherm(iipsi)*sqrt(2.0_fp*(-log(TailNeps)-0.5_fp*log(TailTeps))/(1.0_fp-TailTeps))
       
-     fe(ivZero,iipsi,iITR) = 0.0
+     fe(ivZero,iipsi,iITR) = 0.0_fp
      LoVfac = VthSInv
      HiVfac = LoVfac*TailTeps
      do  iv = ivZero - 1, 3, - 1
@@ -344,10 +344,10 @@ subroutine lscsq_FeMaxw(iipsi)
           fe(iv,iipsi,iITR) = FeNorm(iipsi) * RsltMin
         endif
       enddo
-      fe(1,iipsi,iITR) = 0.0 
-      fe(2,iipsi,iITR) = 0.0 
-      fe(nv-1,iipsi,iITR) = 0.0 
-      fe(nv  ,iipsi,iITR) = 0.0 
+      fe(1,iipsi,iITR) = 0.0_fp 
+      fe(2,iipsi,iITR) = 0.0_fp 
+      fe(nv-1,iipsi,iITR) = 0.0_fp
+      fe(nv  ,iipsi,iITR) = 0.0_fp 
     endif
 
 end subroutine lscsq_FeMaxw
@@ -382,7 +382,7 @@ subroutine lscsq_FePrime
      do iv = 1, ivZero-1
         dfdv(iv,ips,2) = dfdv(iv,ips,2)/vpar(iv)
      enddo        
-     dfdv(ivZero,ips,2) = 0.0
+     dfdv(ivZero,ips,2) = 0.0_fp
      do iv = ivZero+1 , nv
         dfdv(iv,ips,2) = dfdv(iv,ips,2)/vpar(iv)
      enddo        
@@ -409,7 +409,7 @@ subroutine lscsq_FePrU
         dfdv(iv,ips,1)=-(fe(iv-1,ips,iITR)-fe(iv,ips,iITR))/(vpar(iv+1)-vpar(iv))
      enddo
      ! compute unsmoothed derivative
-     dfdv(ivZero, ips,1) = 0.0
+     dfdv(ivZero, ips,1) = 0.0_fp
      dfdv(nv,ips,1) = dfdv(nv-1,ips,1)
      dfdv(1,ips,1) = dfdv(2,ips,1)
   enddo         

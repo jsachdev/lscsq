@@ -59,14 +59,14 @@ subroutine lscsq_DqlGen
 !
 !     .                                 Clear the unsmoothed part of Dql
 
-  dql(1:nv,1:npsi,1:2) = 0.0 
+  dql(1:nv,1:npsi,1:2) = 0.0_fp
   ! Fill up the unsmoothed part of Dql
   do iry  = 1, nrays
       do izn   = 1, nzones-1
         iv = ivind(izn,iry)
         ! If  ivind=0, the ray was stopped before reaching this izone (izn).
         !    If Power=0, no contribution to Dql. No calculation is appropriate.
-        if (iv.EQ.0 .or. Power(izn,iry).EQ.0.0) cycle    
+        if (iv.EQ.0 .or. Power(izn,iry).EQ.0.0_fp) cycle    
         ip = izind(izn,iry)
         if (iv.eq.nv) dv = vpar(iv)-vpar(iv-1)
         if (iv.lt.nv) dv = vpar(iv+1)-vpar(iv)
@@ -132,7 +132,7 @@ SUBROUTINE lscsq_convolve(n, nsm, smvec, vout, vin)
   jlow = - nsm
   jup = nsm
   do i = ilow, iup
-     vout(i) = 0.0 
+     vout(i) = 0.0_fp
      do j = jlow, jup
         vout(i) = vout(i)+smvec(j)*vin(i-j)
      enddo        
@@ -143,7 +143,7 @@ SUBROUTINE lscsq_convolve(n, nsm, smvec, vout, vin)
   iup = nsm
   jlow = - nsm
   do i = ilow, iup
-     vout(i) = 0.0 
+     vout(i) = 0.0_fp 
      jup = i - 1
      do j = jlow, jup
         vout(i) = vout(i) + smvec(j) * vin(i - j)
@@ -155,7 +155,7 @@ SUBROUTINE lscsq_convolve(n, nsm, smvec, vout, vin)
   iup = n
   jup = nsm
   do i = ilow, iup
-     vout(i) = 0.0 
+     vout(i) = 0.0_fp 
     jlow = n - i
     do j = jlow, jup
        vout(i) = vout(i) + smvec(j) * vin(i - j)

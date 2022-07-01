@@ -10,6 +10,7 @@ end subroutine lscsq_PdepCalc
 SUBROUTINE lscsq_RfDamp
   use lscsq_mod, only: power, pray, qlsm, ivind, izind, praytot, praysum, ppwrsum
   use lscsq_mod, only: npsi,nrays,nzones,npsi,nv,nsmoo, ok_ray
+  use iso_c_binding, only : fp => c_double
   implicit none
 
   integer :: izn, iry, iv, ips
@@ -20,8 +21,8 @@ SUBROUTINE lscsq_RfDamp
 !     velocity zone izind(izone, iray), ivind(izone, iray) and use
 !     differences to compute local deposition
 
-  pray(1:nv,1:npsi) = 0.0 
-  praytot(1:npsi) = 0.0 
+  pray(1:nv,1:npsi) = 0.0_fp
+  praytot(1:npsi) = 0.0_fp 
   do iry = 1, nrays
        do izn = 1, nzones-1
           iv = ivind(izn, iry)
@@ -46,13 +47,14 @@ end SUBROUTINE lscsq_RfDamp
 SUBROUTINE lscsq_RfHeat
   use lscsq_mod, only: ismo, vpar, dql, dfdv, dvol, pqltot, pql, pqlsum, qlsm
   use lscsq_mod, only: npsi,nv,nsmoo, dvplus, lh_const
+  use iso_c_binding, only : fp => c_double
   implicit none
 
   integer :: ips, iv, iSMOi
 
   ! compute power flow resulting from quasilinear diffusion
-  pqltot(1:npsi) = 0.0 
-  Pql(1:nv,1:npsi) = 0.0 
+  pqltot(1:npsi) = 0.0_fp 
+  Pql(1:nv,1:npsi) = 0.0_fp 
   iSMOi = mod(iSMO,2) + 1
 
   ! The quasilinear power deposited in each velocity bin in each psi bin is:
@@ -90,8 +92,8 @@ SUBROUTINE lscsq_RayDamp
   allocate(yx(nzones))
   allocate(yql(nzones))
 
-  yx(1:nzones) = 0.0
-  yql(1:nzones) = 0.0
+  yx(1:nzones) = 0.0_fp
+  yql(1:nzones) = 0.0_fp
 
   ! First do Maxwellian damping dlnPdsX
   ! compute exponential decrement, deposit into yX (Maxwellian) and yQL (quasilinear)
@@ -126,8 +128,8 @@ SUBROUTINE lscsq_RayDamp
         endif
         yx(i+1)=yx(i)*dum
         if(dum .EQ. MxdPdZ) then
-          if (i.lt.nzones-1) yx(i+1:nzones) = 0.0 
-          if (i.eq.nzones-1) yx(nzones) = 0.0  
+          if (i.lt.nzones-1) yx(i+1:nzones) = 0.0_fp 
+          if (i.eq.nzones-1) yx(nzones) = 0.0_fp  
           exit
         endif
      enddo
@@ -156,8 +158,8 @@ SUBROUTINE lscsq_RayDamp
         yQL(i+1) = yQL(i)*exp(-dum)
 
         if (yQL(i+1).LT.1.0e-20_fp) then
-          if (i.lt.nzones-1) yql(i+1:nzones) = 0.0 
-          if (i.eq.nzones-1) yql(nzones) = 0.0 
+          if (i.lt.nzones-1) yql(i+1:nzones) = 0.0_fp 
+          if (i.eq.nzones-1) yql(nzones) = 0.0_fp 
           exit
         endif
      enddo

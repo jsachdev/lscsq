@@ -42,7 +42,7 @@ subroutine lscsq_ugridEXC(vector,npts,vmin,vmax,EXCLUDED)
               max ( (vmaxMINU-vminMINU) , 0.0_fp)
   dv = dv/real(npts-1,kind=fp)
 
-  if (dv .LE. 0.0) return
+  if (dv .LE. 0.0_fp) return
 
 ! fmp - need to simplify the logic below and remove the gotos 
   v = vmin

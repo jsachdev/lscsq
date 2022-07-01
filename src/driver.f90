@@ -24,9 +24,6 @@ program driver
 
   call alloc_profs
 
-  allocate(psigrd(nx,nz))
-  psigrd = lh_inp%psirz
-
   ! all arrays with dimension set by the external code (e.g. TRANSP) 
   ! are allocated here
 
@@ -186,7 +183,7 @@ subroutine lscsq_readpstate(pstate_file)
   status = nf90_get_var(ncid,vid,dum1p) 
   if (status /= nf90_noerr) call handle_err(status)
   lh_inp%vol = dum1p
-  lh_inp%dvol(1) = 0.0
+  lh_inp%dvol(1) = 0.0_fp
   do i=2,dim_nrho_eq
      lh_inp%dvol(i) = lh_inp%vol(i)-lh_inp%vol(i-1) 
   enddo
@@ -218,7 +215,7 @@ subroutine lscsq_readpstate(pstate_file)
   ierr = nf90_inq_varid(ncid,'Ts',vid)
   status = nf90_get_var(ncid,vid,dum2d) 
   if (status /= nf90_noerr) call handle_err(status)
-  lh_inp%Te(1) = dum2d(1,1)+0.5*(dum2d(1,1)-dum2d(2,1)) 
+  lh_inp%Te(1) = dum2d(1,1)+0.5_fp*(dum2d(1,1)-dum2d(2,1)) 
   do i=1,dm1_nrho-1
      lh_inp%Te(i+1) = 0.5_fp*(dum2d(i,1)+dum2d(i+1,1)) 
   enddo 
@@ -227,7 +224,7 @@ subroutine lscsq_readpstate(pstate_file)
   status = nf90_get_var(ncid,vid,dum1) 
   if (status /= nf90_noerr) call handle_err(status)
 !  from zone center (?) to zone boundary
-  lh_inp%Ti(1) = dum1(1)+0.5*(dum1(1)-dum1(2)) 
+  lh_inp%Ti(1) = dum1(1)+0.5_fp*(dum1(1)-dum1(2)) 
   do i=1,dm1_nrho-1
      lh_inp%Ti(i+1) = 0.5_fp*(dum1(i)+dum1(i+1)) 
   enddo 
@@ -241,7 +238,7 @@ subroutine lscsq_readpstate(pstate_file)
   ierr = nf90_inq_varid(ncid,'ns',vid)
   status = nf90_get_var(ncid,vid,dum2d) 
   if (status /= nf90_noerr) call handle_err(status)
-  lh_inp%ne(1) = dum2d(1,1)+0.5*(dum2d(1,1)-dum2d(2,1)) 
+  lh_inp%ne(1) = dum2d(1,1)+0.5_fp*(dum2d(1,1)-dum2d(2,1)) 
   do i=1,dm1_nrho-1
      lh_inp%ne(i+1) = 0.5_fp*(dum2d(i,1)+dum2d(i+1,1)) 
   enddo 
@@ -250,7 +247,7 @@ subroutine lscsq_readpstate(pstate_file)
   status = nf90_get_var(ncid,vid,dum1) 
   if (status /= nf90_noerr) call handle_err(status)
 !  from zone center (?) to zone boundary
-  lh_inp%ni(1) = dum1(1)+0.5*(dum1(1)-dum1(2)) 
+  lh_inp%ni(1) = dum1(1)+0.5_fp*(dum1(1)-dum1(2)) 
   do i=1,dm1_nrho-1
      lh_inp%ni(i+1) = 0.5_fp*(dum1(i)+dum1(i+1)) 
   enddo 

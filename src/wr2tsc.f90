@@ -37,8 +37,8 @@ subroutine lscsq_PJrfIgrl
   do ips=1,Npsi
      if (PrIntgrl(ips) .LE. 0.05_fp*PrIntgrl(Npsi) .or.              &
             PrIntgrl(ips) .GE. 0.95_fp*PrIntgrl(Npsi)) then
-        nRunDot(ips) = 0.00
-        jRunDot(ips) = 0.00
+        nRunDot(ips) = 0.0_fp
+        jRunDot(ips) = 0.0_fp
      endif
   enddo
 
@@ -82,15 +82,15 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   if(.not.allocated(powdqli)) allocate(powdqli(npsij))
 
   powtsc(1:npsij) = 0.0_fp
-  powtsci(1:npsij) = 0.0 
-  curtsc(1:npsij) = 0.0 
-  curtscp(1:npsij) = 0.0  
-  curtsci(1:npsij) = 0.0  
-  curtscip(1:npsij) = 0.0  
-  powdql(1:npsij) = 0.0 
-  powdqli(1:npsij) = 0.0 
-  dlJdlE(1:npsij) = 0.0  
-  dJdE(1:npsij) = 0.0 
+  powtsci(1:npsij) = 0.0_fp 
+  curtsc(1:npsij) = 0.0_fp 
+  curtscp(1:npsij) = 0.0_fp  
+  curtsci(1:npsij) = 0.0_fp  
+  curtscip(1:npsij) = 0.0_fp  
+  powdql(1:npsij) = 0.0_fp 
+  powdqli(1:npsij) = 0.0_fp 
+  dlJdlE(1:npsij) = 0.0_fp  
+  dJdE(1:npsij) = 0.0_fp 
 
   CALL lscsq_PJrfIgrl
 
@@ -183,8 +183,8 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   curtscp(1:npsij) = zcm2tom2*curtscp(1:npsij)
 
   do l = 1, NpsiJ
-     if(curtsc(l).eq.0.0 .or. dEdcAmnt.eq.0.0 .or. EdcVec(l).eq.0.0) then
-        dlJdlE(l) = 0.0 
+     if(curtsc(l).eq.0.0_fp .or. dEdcAmnt.eq.0.0_fp .or. EdcVec(l).eq.0.0_fp) then
+        dlJdlE(l) = 0.0_fp 
      else
         dlJdlE(l) = (curtscp(l)-curtsc(l))/curtsc(l)*EdcVec(l)/dEdcAmnt
      endif
@@ -220,8 +220,8 @@ subroutine lscsq_FastFrac
       REAL(fp)    dumFe, dumMx, dumV2, duDelV, exp1
       REAL(fp)    wt(2)
       DATA         wt(1)          ,       wt(2)             /           &
-     &     0.666666666666d0, 1.333333333333d0 /
-      DATA    ExpMax / 100.0d0 /
+     &     0.666666666666_fp, 1.333333333333_fp /
+      DATA    ExpMax / 100.0_fp /
 
 !     FastFrac: Fast Fraction of N FstFracN and of Energy FstFracE
 !     are computed and writtend in Subroutine FastFrac(npsi)
@@ -247,10 +247,10 @@ subroutine lscsq_FastFrac
       duDelV  = abs ( Vpar(IvZero+1) - Vpar(IvZero) )
       RsltMin = exp ( -ExpMax )
       do 20 i = 1, npsi
-        duFracN = 0.0 
-        duFracE = 0.0  
-        duMaxwN = 0.0 
-        duMaxwE = 0.0  
+        duFracN = 0.0_fp 
+        duFracE = 0.0_fp  
+        duMaxwN = 0.0_fp 
+        duMaxwE = 0.0_fp  
         duNorm  = FeNorm(i)
         duVth2  = Vtherm(i)*Vtherm(i)
         if ( vtherm(i) .GE. duDelV ) then
@@ -263,7 +263,7 @@ subroutine lscsq_FastFrac
             duFracN = duFracN + dumFe
             duFracE = duFracE + dumV2
 
-            exp1 =  vpar(j)*vpar(j)/(2.*duVth2)
+            exp1 =  vpar(j)*vpar(j)/(2.0_fp*duVth2)
             if(exp1 .LT. ExpMax) then
               exp1 = exp( -exp1 )
             else
@@ -282,8 +282,8 @@ subroutine lscsq_FastFrac
           FstFracN(i) = ( duFracN - duMaxwN ) / duMaxwN
             FstFracE(i) = ( duFracE - duMaxwE ) / duMaxwE
         else
-          FstFracN(i) = 0.0  
-          FstFracE(i) = 0.0  
+          FstFracN(i) = 0.0_fp  
+          FstFracE(i) = 0.0_fp  
         endif
  20   continue
       return

@@ -10,7 +10,7 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
 !     i,j as last call
 !
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : nx, nz, psigrd
+  use lscsq_mod, only : nx, nz !, psigrd
   use lscsq_mod, only: lh_inp
  
   implicit none
@@ -37,7 +37,7 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
       DIMENSION fmat(0:3,0:*),poly(0:3,0:3)
       DIMENSION xpa(0:3),zpa(0:3)
       DIMENSION psderiv(0:2, 0:*)
-      DATA xpa(0),zpa(0)/ 1.d0, 1.d0/
+      DATA xpa(0),zpa(0)/ 1.0_fp, 1.0_fp/
 
       rjval = (zz-lh_inp%zmin)/deez+1.0_fp
       rival = (xx-lh_inp%rmin )/deex+1.0_fp
@@ -110,12 +110,12 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
 !
 !...psi:
 !
-         vmat(1, ii) =      psigrd(i, j)     - psigrd(ival, jval)
-         vmat(2, ii) = cx * (psigrd(iplus, j  ) - psigrd(iminus, j) )
-         vmat(3, ii) = cy * (psigrd(i, jplus) - psigrd(i, jminus)  )
-         vmat(4, ii) = cx * cy * (psigrd(iplus, jplus) -                   &
-     &        psigrd(iminus, jplus) - psigrd(iplus, jminus) +                 &
-     &        psigrd(iminus, jminus) )
+         vmat(1, ii) =      lh_inp%psirz(i, j)     - lh_inp%psirz(ival, jval)
+         vmat(2, ii) = cx * (lh_inp%psirz(iplus, j  ) - lh_inp%psirz(iminus, j) )
+         vmat(3, ii) = cy * (lh_inp%psirz(i, jplus) - lh_inp%psirz(i, jminus)  )
+         vmat(4, ii) = cx * cy * (lh_inp%psirz(iplus, jplus) -                   &
+     &        lh_inp%psirz(iminus, jplus) - lh_inp%psirz(iplus, jminus) +                 &
+     &        lh_inp%psirz(iminus, jminus) )
 !
   enddo
 ! 10   continue
@@ -133,32 +133,32 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
 !     at four corner points c
 !..........................................................c
 !...point(i,j):c
-      fmat(0,0) = 0.0  
+      fmat(0,0) = 0.0_fp 
       fmat(1,0) = vmat(2,1)
       fmat(0,1) = vmat(3,1)
       fmat(1,1) = vmat(4,1)
 !
 !...point(i,j+1):
 !
-      fmat(0,2) = 3.*vmat(1,2) - 2.*fmat(0,1)                           &
+      fmat(0,2) = 3.0_fp*vmat(1,2) - 2.0_fp*fmat(0,1)                           &
      &     -    vmat(3,2)
       fmat(0,3) =    vmat(3,2) +    fmat(0,1)                           &
-     &     - 2.*vmat(1,2)
-      fmat(1,2) = 3.*vmat(2,2) - 3.*fmat(1,0)                           &
-     &     -    vmat(4,2) - 2.*fmat(1,1)
-      fmat(1,3) =    vmat(4,2) + 2.*fmat(1,0)                           &
-     &     - 2.*vmat(2,2) +    fmat(1,1)
+     &     - 2.0_fp*vmat(1,2)
+      fmat(1,2) = 3.0_fp*vmat(2,2) - 3.0_fp*fmat(1,0)                           &
+     &     -    vmat(4,2) - 2.0_fp*fmat(1,1)
+      fmat(1,3) =    vmat(4,2) + 2.0_fp*fmat(1,0)                           &
+     &     - 2.0_fp*vmat(2,2) +    fmat(1,1)
 !
 !...point(i+1,j):
 !
-      fmat(2,0) = 3.*vmat(1,3) - 2.*fmat(1,0)                           &
+      fmat(2,0) = 3.0_fp*vmat(1,3) - 2.0_fp*fmat(1,0)                           &
      &     -    vmat(2,3)
       fmat(3,0) =    vmat(2,3) +    fmat(1,0)                           &
-     &     - 2.*vmat(1,3)
-      fmat(2,1) = 3.*vmat(3,3) - 3.*fmat(0,1)                           &
-     &     -    vmat(4,3) - 2.*fmat(1,1)
-      fmat(3,1) =    vmat(4,3) + 2.*fmat(0,1)                           &
-     &     - 2.*vmat(3,3) +    fmat(1,1)
+     &     - 2.0_fp*vmat(1,3)
+      fmat(2,1) = 3.0_fp*vmat(3,3) - 3.0_fp*fmat(0,1)                           &
+     &     -    vmat(4,3) - 2.0_fp*fmat(1,1)
+      fmat(3,1) =    vmat(4,3) + 2.0_fp*fmat(0,1)                           &
+     &     - 2.0_fp*vmat(3,3) +    fmat(1,1)
 !
 !...point(i+1,j+1):
 !
@@ -168,24 +168,24 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
       rhs2=   vmat(2,4)-vmat(2,3)-vmat(4,3)                             &
      &     -  (fmat(1,2)+fmat(1,3) )
       rhs3=   vmat(3,4)-vmat(3,3)                                       &
-     &     -2*(fmat(0,2)+fmat(1,2) )                                    &
-     &     -3*(fmat(0,3)+fmat(1,3) )
+     &     -2.0_fp*(fmat(0,2)+fmat(1,2) )                                    &
+     &     -3.0_fp*(fmat(0,3)+fmat(1,3) )
       rhs4=   vmat(4,4)-vmat(4,3)                                       &
-     &     -2*(fmat(1,2) )                                              &
-     &     -3*(fmat(1,3) )
+     &     -2.0_fp*(fmat(1,2) )                                              &
+     &     -3.0_fp*(fmat(1,3) )
 !
-      fmat(2,2) =  9*rhs1-3*rhs2-3*rhs3+rhs4
-      fmat(3,2) = -6*rhs1+3*rhs2+2*rhs3-rhs4
-      fmat(2,3) = -6*rhs1+2*rhs2+3*rhs3-rhs4
-      fmat(3,3) =  4*rhs1-2*rhs2-2*rhs3+rhs4
+      fmat(2,2) =  9.0_fp*rhs1-3.0_fp*rhs2-3.0_fp*rhs3+rhs4
+      fmat(3,2) = -6.0_fp*rhs1+3.0_fp*rhs2+2.0_fp*rhs3-rhs4
+      fmat(2,3) = -6.0_fp*rhs1+2.0_fp*rhs2+3.0_fp*rhs3-rhs4
+      fmat(3,3) =  4.0_fp*rhs1-2.0_fp*rhs2-2.0_fp*rhs3+rhs4
  200  continue
 !...........................................................
 !
 !     evaluate function and derivatives at (xx,zz)
 !
 !...........................................................
-      xp     = rival - ival
-      zp     = rjval - jval
+      xp     = rival - real(ival,kind=fp)
+      zp     = rjval - real(jval,kind=fp)
  
 !     begin evaluate function
       do m=1,3
@@ -198,58 +198,58 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
          enddo
       enddo
  
-      sum1   = 0.0  
+      sum1   = 0.0_fp 
       do k = 0,3
          do l = 0,3
             f1     = fmat(k,l)
             sum1   = sum1 + f1*poly(k,l)
          enddo
       enddo
-      psval  = sum1 + psigrd(ival,jval)
+      psval  = sum1 + lh_inp%psirz(ival,jval)
 !     end evaluate function
  
 !     begin evaluate derivatives
-      sum2   = 0.0 
+      sum2   = 0.0_fp
       do l = 0,3
          do k = 0,2
-            ff   = (k+1)*fmat(k+1,l)
+            ff   = real(k+1,kind=fp)*fmat(k+1,l)
             sum2 = sum2 + ff*poly(k,l)
          enddo
       enddo
       dpsidx = sum2/deex
  
-      sum3   = 0.0 
+      sum3   = 0.0_fp 
       do k = 0,3
          do l = 0,2
-            ff   = (l+1)*fmat(k,l+1)
+            ff   = real(l+1,kind=fp)*fmat(k,l+1)
             sum3 = sum3 + ff*poly(k,l)
          enddo
       enddo
       dpsidz = sum3/deez
       gradsq = dpsidx**2 + dpsidz**2
 !
-      sum5   = 0.0 
+      sum5   = 0.0_fp
       do l = 0,3
          do k = 0,1
-            ff   = (k+1)*(k+2)*fmat(k+2,l)
+            ff   = real((k+1)*(k+2),kind=fp)*fmat(k+2,l)
             sum5 = sum5 + ff*poly(k,l)
          enddo
       enddo
       psixx  = sum5/deex/deex
 !
-      sum6   = 0.0 
+      sum6   = 0.0_fp 
       do k = 0,3
          do l = 0,1
-            ff   = (l+1)*(l+2)*fmat(k,l+2)
+            ff   = real((l+1)*(l+2),kind=fp)*fmat(k,l+2)
             sum6 = sum6 + ff*poly(k,l)
          enddo
       enddo
       psizz  = sum6/deez/deez
  
-      sum4   = 0.0  
+      sum4   = 0.0_fp 
       do k = 0,2
          do l = 0,2
-            ff   = (k+1)*(l+1)*fmat(k+1,l+1)
+            ff   = real((k+1)*(l+1),kind=fp)*fmat(k+1,l+1)
             sum4 = sum4 + ff*poly(k,l)
          enddo
       enddo
@@ -298,16 +298,16 @@ SUBROUTINE lscsq_grnu1d(nx, xdata, ydata, jold, coef, x, y, yp )
   j = jold
   if (xdata(j).gt.x) j=j-1
 
-  coef(1:4) = 0.0 
+  coef(1:4) = 0.0_fp 
 
   if (j .EQ. 0 ) then
      y  = ydata(1)
-     yp = 0.0 
+     yp = 0.0_fp 
      return
   endif
   if ( j.EQ. nx) then
      y  = ydata(nx)
-     yp = 0.0 
+     yp = 0.0_fp 
      return
   endif
 
@@ -330,7 +330,7 @@ SUBROUTINE lscsq_grnu1d(nx, xdata, ydata, jold, coef, x, y, yp )
      coef(1) = ydata(1)
      coef(2) = (2.0_fp*d21 - d31)
      coef(3) = (d31 - d21) / x21
-     coef(4) = 0.0 
+     coef(4) = 0.0_fp 
   else if(j.EQ.(nx-1))then
      x32     = (xdata(nx) - xdata(nx-1))
      d31     = (ydata(nx) - ydata(nx-2)) / (xdata(nx) - xdata(nx-2))
@@ -338,7 +338,7 @@ SUBROUTINE lscsq_grnu1d(nx, xdata, ydata, jold, coef, x, y, yp )
      coef(1) = ydata(nx-1)
      coef(2) =  d31
      coef(3) = (d32-d31) / x32
-     coef(4) = 0.0 
+     coef(4) = 0.0_fp
   endif
   !     compute y, yp
   dx = x - xdata(j)
