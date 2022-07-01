@@ -12,6 +12,9 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install gfortran
         sudo apt-get -y install libnetcdf-dev libnetcdff-dev
+        sudo add-apt-repository ppa:remik-ziemlinski/nccmp
+        sudo apt-get update
+        sudo apt-get install nccmp
     - name: build
       run: |
         export FC=gfortran
