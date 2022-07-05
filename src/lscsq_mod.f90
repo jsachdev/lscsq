@@ -540,15 +540,24 @@ subroutine lscsq_alloc
 
 
   if(.not.allocated(fghz_ant)) allocate(fghz_ant(nant))
+  fghz_ant = 0.0_fp
   if(.not.allocated(power_inp)) allocate(power_inp(nant))
+  power_inp = 0.0_fp
   if(.not.allocated(npeaks)) allocate(npeaks(nant))
+  npeaks = 0
   if(.not.allocated(powers_ant)) allocate(powers_ant(ngrps,nant))
+  powers_ant = 0.0_fp
   if(.not.allocated(centers_ant)) allocate(centers_ant(ngrps,nant))
+  centers_ant = 0.0_fp
   if(.not.allocated(widths_ant)) allocate(widths_ant(ngrps,nant))
+  widths_ant = 0.0_fp
 
   if(.not.allocated(powers)) allocate(powers(ngrps))
+  powers = 0.0_fp
   if(.not.allocated(centers)) allocate(centers(ngrps))
+  centers = 0.0_fp
   if(.not.allocated(widths)) allocate(widths(ngrps))
+  widths = 0.0_fp
 
   if(.not.allocated(pray)) allocate(pray(nv,npsi))
   if(.not.allocated(pql)) allocate(pql(nv,npsi))
