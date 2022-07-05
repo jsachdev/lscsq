@@ -21,7 +21,7 @@ jobs:
       env:
         SSHK: ${{ secrets.PSPLINE_SECRET }}
       run: |
-        mkdir -l $HOME/.ssh
+        mkdir -p $HOME/.ssh
         echo "$SSHK" > $HOME/.ssh/ssh.key
         chmod 600 $HOME/.ssh/ssh.key
         export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/ssh.key"
