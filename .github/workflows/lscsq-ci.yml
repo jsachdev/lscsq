@@ -17,10 +17,24 @@ jobs:
         cd nccmp-1.8.3.1
         chmod +x ./configure
         ./configure && make && sudo make install
+    - name: pspline
+      env:
+        SSHK: ${{ secrets.PSPLINE_SECRET }}
+      run: |
+        mkdir -l $HOME/.ssh
+        echo "$SSHK" > $HOME/.ssh/ssh.key
+        chmod 600 $HOME/.ssh/ssh.key
+        export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/ssh.key"
+        cd $HOME
+        git clone git@github.com:PrincetonUniversity/pspline.git
+        cd pspline
+        make -j
+        make install
     - name: build
       run: |
         export FC=gfortran
         export F90=gfortran
+        export PSPLINE_HOME=$HOME/pspline/build
         cd src
         make
         make install
