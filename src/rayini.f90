@@ -26,7 +26,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   use lscsq_mod, only: delpsi,Powrry,RofRay,zofray
   use lscsq_mod, only: Ezsq,distry,detrry
   use lscsq_mod, only: iray, nzones, npsij 
-  use lscsq_mod, only: sleave, tleave, senter, tenter, psiary
+  use lscsq_mod, only: sleave, tleave, senter, tenter
   use lscsq_mod, only: lh_const !, lh_out
   use lscsq_mod, only: lh_inp
 
@@ -101,13 +101,13 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       if ( discrimt .LE. 0.0_fp ) then
         discrimt = 0.0_fp
         RayIniErr= 1
+#if DEBUG==2
         CALL lscsq_LSCwarn(' no accessibity found for this ray ')
+#endif
         return
       endif
  
       CALL lscsq_ZPLRCnr(3,Azplr,ZC)
-      ! write(0,*) 'Azplr ', Azplr
-      ! write(0,*) 'zc ', zc
 !     Finds Zeroes of a Polynomial with Laguerre's method if
 !     Real Coefficients
 !     using Numerical Recipes code so we dont depend on IMSL
@@ -163,7 +163,6 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   RzindOld = (Psi-lh_inp%plflx(1))/DelPsi + 1.5_fp
   RE41 = RzindOld
   IzindOld = int(RE41)
-!  izindold = minloc(abs(psiary-psi),1)
  
   izind(1,iray)  = IzindOld
   rzind(1,iray)  = RzindOld

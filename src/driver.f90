@@ -1,8 +1,19 @@
 program driver
 
-  use iso_c_binding, only: fp => c_double, c_int
-  use lscsq_mod
+!  use iso_c_binding, only: fp => c_double, c_int
+  use lscsq_mod, only: npsij, lh_inp, lh_coeff, lh_const
+  use lscsq_mod, only: voltlp, Edcvec 
+  use lscsq_mod, only: nx, nz, pe2min, wcei2, psivec
+  use lscsq_mod, only: zmtocm, zkev2ev, zel, zcm3tom3, me_g, twopi
+  use lscsq_mod, only: pe2vec, pi2vec, aelvec, aiovec
+  use lscsq_mod, only: me_kg, mp_kg, pi, vc, qe_ev
+  use lscsq_mod, only: i1stcall, ierror
+  use lscsq_mod, only: alloc_profs, dealloc_profs
+
   use netcdf ! to read from CDF file
+  use EZspline_obj      
+  use EZspline
+  
   implicit none
 
   character(len=80) :: cdffile
@@ -15,8 +26,15 @@ program driver
   real(fp) :: dum
 
   real(fp), dimension(:), allocatable :: zpowtsc, zcurtsc, ZdlJdlE, ZdJdE
-
+  real(fp), dimension(:,:,:), allocatable :: f2d
+  real(fp), dimension(:,:), allocatable :: f1d
   integer :: iraytr=1
+
+  type(EZspline1) :: spline_o ! 1D interpolation
+  integer :: sp_n1,sp_ier
+  integer, dimension(2) :: sp_BCS1=0
+  real(fp), dimension(:), allocatable :: sp_x1,sp_f ! function values
+  real(fp) :: sp_fp  
   
 
   cdffile = 'cur_state.cdf'
@@ -64,8 +82,154 @@ program driver
   wcei2 = wcei2*lh_inp%B_axis**2
 
   pe2min = pe2Vec(NpsiJ)
+!  pe2min = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne(npsij)
 
   call nml2lsc
+
+  ! here goes the call to the 2D pspline, to interpolate the following profiles
+  ! that are used for the calculation of the dispersion relation:
+  ! electron density
+  ! electron and ion temperature
+  ! components of the magnetic field
+  ! psi(R,z)  
+  ! the cyclotron frequency will be calculated locally
+  ! all plasma and fundamental frequencies will be calculated locally from the
+  ! plasma parameters interpolated along the ray trajectory. 
+  ! the pspline coefficients need to be stored in a separate type that is passed
+  ! to the ray tracing. We define the types here, they do not need to be defined
+  ! as a global parameter, they can just be passed as an argument.   
+
+  ! start with magnetic field only - it will be passed directly to avoid
+  ! calculating derivatives of psi. This will eliminate the grap.f90 and
+  ! simplify grapgrd.f90
+
+  ! the spline coefficients will be stored in types, so that they can be passed
+  ! as arguments => good for GPU
+  allocate(lh_coeff%Bp(nx,nz,9))
+  allocate(lh_coeff%Br(nx,nz,9))
+  allocate(lh_coeff%Bz(nx,nz,9))
+  allocate(lh_coeff%psi(nx,nz,9))
+  allocate(f2d(nx,nz,9))
+
+  f2d = 0.0_fp
+  f2d(:,:,1) = lh_inp%BphiRZ
+  call splnrz(f2d)
+  lh_coeff%Bp(:,:,1) = lh_inp%BphiRZ
+  lh_coeff%Bp(:,:,2:9) = f2d(:,:,2:9)
+
+  f2d = 0.0_fp
+  f2d(:,:,1) = lh_inp%BrRZ
+  call splnrz(f2d)
+  lh_coeff%Br(:,:,1) = lh_inp%BrRZ
+  lh_coeff%Br(:,:,2:9) = f2d(:,:,2:9)
+
+  f2d = 0.0_fp
+  f2d(:,:,1) = lh_inp%BzRZ
+  call splnrz(f2d)
+  lh_coeff%Bz(:,:,1) = lh_inp%BzRZ
+  lh_coeff%Bz(:,:,2:9) = f2d(:,:,2:9)
+
+  f2d = 0.0_fp
+  f2d(:,:,1) = lh_inp%psiRZ
+  call splnrz(f2d)
+  lh_coeff%psi(:,:,1) = lh_inp%psiRZ
+  lh_coeff%psi(:,:,2:9) = f2d(:,:,2:9)
+ 
+  ! derive profiles of ne, Te, Ti on a regular psi grid
+  allocate(psivec(npsij))
+  ! generate regular psi grid
+  CALL lscsq_ugrid(Psivec, npsij, lh_inp%plflx(1), lh_inp%plflx(npsij)) 
+
+  ! use EZspline to interpolate ne, Te, Ti profiles to regular grid
+  allocate(sp_f(npsij))
+  allocate(sp_x1(npsij))
+  !     impose boundary conditions on first derivative/node (spline only)
+      
+  !     initialize call for spline interpolation 
+  call EZspline_init(spline_o,npsij,sp_BCS1,sp_ier) ! spline
+  call EZspline_error(sp_ier)
+      
+  !     set boundary conditions for 1st derivative
+  spline_o%bcval1min = 0.0_fp
+  spline_o%bcval1max = 0.0_fp
+      
+  ! radial basis for interpolation from transp.dat
+  spline_o%x1(:) = psivec                
+      
+  ! ne profile      
+  sp_f(:) = lh_inp%ne      
+  ! setup interpolating function
+  call EZspline_setup(spline_o,sp_f,sp_ier)
+  call EZspline_error(sp_ier)
+
+  allocate(lh_coeff%ne(npsij,3))
+  ! interpolate ne           
+  do i = 1,npsij 
+     call EZspline_interp(spline_o,lh_inp%plflx(i),sp_fp,sp_ier)
+     call EZspline_error(sp_ier)
+     lh_coeff%ne(i,1) = sp_fp
+  enddo
+   
+  allocate(f1d(npsij,3))
+  f1d = 0.0_fp  
+  f1d(:,1) = lh_coeff%ne(:,1)
+  call spln1d(npsij,psivec,f1d)
+  lh_coeff%ne(:,2:3) = f1d(:,2:3)
+
+  ! ----------------------------------
+  ! Te profile      
+  sp_f(:) = lh_inp%Te      
+  ! setup interpolating function
+  call EZspline_setup(spline_o,sp_f,sp_ier)
+  call EZspline_error(sp_ier)
+
+  allocate(lh_coeff%te(npsij,3))
+  do i = 1,npsij 
+     call EZspline_interp(spline_o,lh_inp%plflx(i),sp_fp,sp_ier)
+     call EZspline_error(sp_ier)
+     lh_coeff%Te(i,1) = sp_fp
+  enddo
+  f1d = 0.0_fp  
+  f1d(:,1) = lh_coeff%Te(:,1)
+  call spln1d(npsij,psivec,f1d)
+  lh_coeff%Te(:,2:3) = f1d(:,2:3)
+
+  ! ----------------------------------
+  ! Ti profile      
+  sp_f(:) = lh_inp%Ti      
+  ! setup interpolating function
+  call EZspline_setup(spline_o,sp_f,sp_ier)
+  call EZspline_error(sp_ier)
+
+  allocate(lh_coeff%Ti(npsij,3))
+  do i = 1,npsij 
+     call EZspline_interp(spline_o,lh_inp%plflx(i),sp_fp,sp_ier)
+     call EZspline_error(sp_ier)
+     lh_coeff%Ti(i,1) = sp_fp
+  enddo
+  f1d = 0.0_fp  
+  f1d(:,1) = lh_coeff%Ti(:,1)
+  call spln1d(npsij,psivec,f1d)
+  lh_coeff%Ti(:,2:3) = f1d(:,2:3)
+
+  ! ----------------------------------
+  ! ni profile      
+  sp_f(:) = lh_inp%ni      
+  ! setup interpolating function
+  call EZspline_setup(spline_o,sp_f,sp_ier)
+  call EZspline_error(sp_ier)
+
+  allocate(lh_coeff%ni(npsij,3))
+  do i = 1,npsij 
+     call EZspline_interp(spline_o,lh_inp%plflx(i),sp_fp,sp_ier)
+     call EZspline_error(sp_ier)
+     lh_coeff%ni(i,1) = sp_fp
+  enddo
+  f1d = 0.0_fp  
+  f1d(:,1) = lh_coeff%ni(:,1)
+  call spln1d(npsij,psivec,f1d)
+  lh_coeff%ni(:,2:3) = f1d(:,2:3)
+
 
   i1stcall = 1
   iraytr = 1  
@@ -140,6 +304,11 @@ subroutine lscsq_readpstate(pstate_file)
   if (status /= nf90_noerr) call handle_err(status)
 
   allocate(lh_inp%psirz(dim_nr,dim_nz))
+  allocate(lh_inp%BphiRZ(dim_nr,dim_nz))
+  allocate(lh_inp%BrRZ(dim_nr,dim_nz))
+  allocate(lh_inp%BzRZ(dim_nr,dim_nz))
+  allocate(lh_inp%rgrid(dim_nr))
+  allocate(lh_inp%zgrid(dim_nz))
   nx = dim_nr
   nz = dim_nz
 
@@ -194,7 +363,20 @@ subroutine lscsq_readpstate(pstate_file)
   if (status /= nf90_noerr) call handle_err(status)
   lh_inp%psirz = dumrz
   
+  ierr = nf90_inq_varid(ncid,'BphiRZ',vid)
+  status = nf90_get_var(ncid,vid,dumrz) 
+  if (status /= nf90_noerr) call handle_err(status)
+  lh_inp%BphiRZ = dumrz
 
+  ierr = nf90_inq_varid(ncid,'BRRZ',vid)
+  status = nf90_get_var(ncid,vid,dumrz) 
+  if (status /= nf90_noerr) call handle_err(status)
+  lh_inp%BrRZ = dumrz
+
+  ierr = nf90_inq_varid(ncid,'BZRZ',vid)
+  status = nf90_get_var(ncid,vid,dumrz) 
+  if (status /= nf90_noerr) call handle_err(status)
+  lh_inp%BzRZ = dumrz
 
 !        double psipol(dim_nrho_eq) ;
   ierr = nf90_inq_varid(ncid,'psipol',vid)
@@ -345,13 +527,14 @@ subroutine lscsq_readpstate(pstate_file)
   status = nf90_get_var(ncid,vid,dum_z) 
   if (status /= nf90_noerr) call handle_err(status)
   lh_inp%dz_grid=(dum_z(dim_nz)-dum_z(1))/(dim_nz-1)
+  lh_inp%zgrid = dum_z 
 
   allocate(dum_r(dim_nr)) 
   ierr = nf90_inq_varid(ncid,'R_grid',vid)
   status = nf90_get_var(ncid,vid,dum_r) 
   if (status /= nf90_noerr) call handle_err(status)
   lh_inp%dx_grid = (dum_r(dim_nr)-dum_r(1))/(dim_nr-1)
-
+  lh_inp%rgrid = dum_r 
 
 
   close(ncid)
@@ -462,8 +645,8 @@ subroutine lscsq_writecdf
   ierr=nf90_put_var(ncid,vid_Btry,Bthray)
   ierr=nf90_put_var(ncid,vid_rtpy,rtpsry)
   
-  ierr=nf90_put_var(ncid,vid_neou,neary)
-  ierr=nf90_put_var(ncid,vid_teou,teary)
+  ierr=nf90_put_var(ncid,vid_neou,lh_out%ne)
+  ierr=nf90_put_var(ncid,vid_teou,lh_out%te)
   ierr=nf90_put_var(ncid,vid_psiou,psiary)
   ierr=nf90_put_var(ncid,vid_Edcou,Edcary)
   ierr=nf90_put_var(ncid,vid_Edcin,Edcvec)
@@ -500,9 +683,5 @@ subroutine handle_err(status)
 end if
 
 end subroutine handle_err
-
-
-
-
 
 end program driver

@@ -210,9 +210,9 @@ module lscsq_mod
   real(fp), dimension(:,:,:), allocatable :: fe, dfdv
 
 
-  real(fp), allocatable, dimension(:) :: NeAry, PsiAry, TeAry, ZbrAry, &
-                                  iVlAry, dVol, EdcAry, LnlAry, &
-                                  BetZAry, MidAry 
+  real(fp), allocatable, dimension(:) :: PsiAry,  &
+                                  iVlAry, dVol, EdcAry,  &
+                                  MidAry 
 
   real(fp), allocatable, dimension(:) :: js, jsp, nRunDot, jRunDot, ugr, &
                                          vRunIdx, IrIntgrl, IpIntgrl,    &
@@ -254,7 +254,7 @@ module lscsq_mod
   integer :: nz = 159
   integer :: npsij 
 
-  real(fp), allocatable, dimension(:) :: rho, voltlp
+  real(fp), allocatable, dimension(:) :: rho, voltlp, psivec
 
   integer(c_int), dimension(:), allocatable :: nz_ind, ok_ray
 
@@ -304,11 +304,16 @@ module lscsq_mod
     integer :: npsi
     integer :: nv
     integer :: nrays
-    real(fp), dimension(:), allocatable :: psiary
+    real(fp), dimension(:), allocatable :: psi
+    real(fp), dimension(:), allocatable :: ne
+    real(fp), dimension(:), allocatable :: Te
+    real(fp), dimension(:), allocatable :: Edc
+    real(fp), dimension(:), allocatable :: zbar
+    real(fp), dimension(:), allocatable :: logL
+    real(fp), dimension(:), allocatable :: betZ
     integer, dimension(:,:), allocatable :: izind
     integer, dimension(:,:), allocatable :: ivind
     integer, dimension(:), allocatable :: ok_ray
-    real(fp), dimension(:), allocatable :: psi  
     real(fp), dimension(:), allocatable :: vpar
     real(fp), dimension(:), allocatable :: freq_ray    
     real(fp), dimension(:,:), allocatable :: dlnPdsK 
@@ -348,6 +353,11 @@ module lscsq_mod
     real(fp), dimension(:), allocatable :: vol  
     real(fp), dimension(:), allocatable :: g_eq  
     real(fp), dimension(:,:), allocatable :: psirz  
+    real(fp), dimension(:), allocatable :: rgrid 
+    real(fp), dimension(:), allocatable :: zgrid 
+    real(fp), dimension(:,:), allocatable :: Bphirz 
+    real(fp), dimension(:,:), allocatable :: BrRZ   
+    real(fp), dimension(:,:), allocatable :: BzRZ  
   end type lh_plasma
 
   type lh_param
@@ -368,7 +378,23 @@ module lscsq_mod
      real(fp) :: nunorm
   end type lh_param
 
+  type lh_map2D
+     real(fp), dimension(:,:,:), allocatable :: Br
+     real(fp), dimension(:,:,:), allocatable :: Bz
+     real(fp), dimension(:,:,:), allocatable :: Bp
+     real(fp), dimension(:,:,:), allocatable :: psi
+     real(fp), dimension(:,:), allocatable :: rho
+     real(fp), dimension(:,:), allocatable :: pe2
+     real(fp), dimension(:,:), allocatable :: pi2
+     real(fp), dimension(:,:), allocatable :: ael
+     real(fp), dimension(:,:), allocatable :: aio
+     real(fp), dimension(:,:), allocatable :: ne 
+     real(fp), dimension(:,:), allocatable :: ni 
+     real(fp), dimension(:,:), allocatable :: Te 
+     real(fp), dimension(:,:), allocatable :: Ti 
+  end type lh_map2D
 
+  type(lh_map2D)  :: lh_coeff
   type(lh_plasma) :: lh_inp
   type(lh_rays)   :: lh_out
   type(lh_param)  :: lh_const
@@ -455,7 +481,12 @@ subroutine lscsq_allocrays
   npol(1:npols) = 0.0_fp
 
 
-  if(.not.allocated(lh_out%psiary)) allocate(lh_out%psiary(nrays))
+  if(.not.allocated(lh_out%psi)) allocate(lh_out%psi(npsi))
+  if(.not.allocated(lh_out%ne)) allocate(lh_out%ne(npsi))
+  if(.not.allocated(lh_out%Te)) allocate(lh_out%Te(npsi))
+  if(.not.allocated(lh_out%zbar)) allocate(lh_out%zbar(npsi))
+  if(.not.allocated(lh_out%logL)) allocate(lh_out%logL(npsi))
+  if(.not.allocated(lh_out%betZ)) allocate(lh_out%betZ(npsi))
   if(.not.allocated(lh_out%dlnPdsK)) allocate(lh_out%dlnPdsK(nzones,nrays))
   if(.not.allocated(lh_out%dlnPdsX)) allocate(lh_out%dlnPdsX(nzones,nrays))
   if(.not.allocated(lh_out%ezsq)) allocate(lh_out%ezsq(nzones,nrays))
@@ -466,33 +497,22 @@ subroutine lscsq_allocrays
   if(.not.allocated(lh_out%fe)) allocate(lh_out%fe(nv,npsi,2))
   if(.not.allocated(lh_out%dfdv)) allocate(lh_out%dfdv(nv,npsi,2))
   if(.not.allocated(lh_out%dql)) allocate(lh_out%dql(nv,npsi,2))
-  if(.not.allocated(lh_out%psi)) allocate(lh_out%psi(npsi))
   if(.not.allocated(lh_out%vpar)) allocate(lh_out%vpar(nv))
 
 end subroutine lscsq_allocrays
 
 subroutine lscsq_alloc
 
-  if(.not.allocated(neary)) allocate(neary(npsi))
-  neary(1:npsi) = 0.0_fp
-  if(.not.allocated(Teary)) allocate(Teary(npsi))
-  Teary(1:npsi) = 0.0_fp
   if(.not.allocated(psiary)) allocate(psiary(npsi))
   psiary(1:npsi) = 0.0_fp
   if(.not.allocated(midary)) allocate(midary(npsi))
   midary(1:npsi) = 0.0_fp
-  if(.not.allocated(zbrary)) allocate(zbrary(npsi))
-  zbrary(1:npsi) = 0.0_fp
   if(.not.allocated(Edcary)) allocate(Edcary(npsi))
   Edcary(1:npsi) = 0.0_fp
-  if(.not.allocated(Lnlary)) allocate(Lnlary(npsi))
-  Lnlary(1:npsi) = 0.0_fp
   if(.not.allocated(iVlary)) allocate(iVlary(npsi))
   iVlary(1:npsi) = 0.0_fp
   if(.not.allocated(dVol)) allocate(dVol(npsi))
   dVol(1:npsi) = 0.0_fp
-  if(.not.allocated(betZary)) allocate(betZary(npsi))
-  betZary(1:npsi) = 0.0_fp
 
   if(.not.allocated(qlsm)) allocate(qlsm(nv))
   qlsm(1:nv) = 0.0_fp

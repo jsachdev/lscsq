@@ -138,10 +138,12 @@ SUBROUTINE lscsq_JdepCalc
      CALL lscsq_ddtNrnJrn ( ip,nRunDot(ip), jRunDot(ip), vRunIdx(ip) )
   enddo
  
+#if DEBUG==2
   if (nGotRuna .GE. 1) then
      write(ErrMsg,'(1x,i4,'' Rway shells; last at ip='',i3)') nGotRuna, ipLastRuna
      call lscsq_LSCwarn(ErrMsg)
   endif
+#endif
 
 end subroutine lscsq_Jdepcalc
 !
@@ -176,18 +178,19 @@ subroutine lscsq_jnorm(ip)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, vc, qe_eV, me_g
-  use lscsq_mod, only: vnorm,muplus,muminus,gmrun,ugr,LnlAry,ugr
-  use lscsq_mod, only: neary, Edcary, ivrun, vpar, vnmax, nuruna, nv
+  use lscsq_mod, only: vnorm,muplus,muminus,gmrun,ugr,ugr
+  use lscsq_mod, only: Edcary, ivrun, vpar, vnmax, nuruna, nv
+  use lscsq_mod, only: lh_out
   implicit none
 
   integer, intent(in) :: ip ! flux surface index
   integer :: iv
   
   !     set up normalization, tabulate u lookup values
-  gmrun = 1.0e-2_fp*NeAry(ip)*LnlAry(ip)*qe_eV**4/me_g**2*vc*2.0_fp*twopi 
+  gmrun = 1.0e-2_fp*lh_out%Ne(ip)*lh_out%logL(ip)*qe_eV**4/me_g**2*vc*2.0_fp*twopi 
   if(EdcAry(ip) .ne. 0.0) then
-     vnorm = 1.0e-9_fp*sqrt(abs(NeAry(ip)/EdcAry(ip)))*    &
-             sqrt(1e13_fp*qe_eV**3/me_g*vc**2 *2.0_fp*twopi*LnlAry(ip))
+     vnorm = 1.0e-9_fp*sqrt(abs(lh_out%Ne(ip)/EdcAry(ip)))*    &
+             sqrt(1e13_fp*qe_eV**3/me_g*vc**2 *2.0_fp*twopi*lh_out%logL(ip))
      if( EdcAry(ip) .GT. 0.) then
         muplus  = +1.0_fp
         muminus = -1.0_fp
@@ -229,8 +232,8 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   use lscsq_mod, only : pi, twopi, qe_eV, vc
   use lscsq_mod, only: Dql,vpar,dfdv,muplus,jray,vpar,dvplus
   use lscsq_mod, only: ismo,fe,ivzero,ugr,vtherm,muminus
-  use lscsq_mod, only: Zbrary,ivlary, iitr, nuruna, nv
-  use lscsq_mod, only: lh_inp
+  use lscsq_mod, only: ivlary, iitr, nuruna, nv
+  use lscsq_mod, only: lh_inp, lh_out
   implicit none
 
   integer, intent(in) :: ip   ! index of flux surface
@@ -261,7 +264,7 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
      if (fe(iv,ip,iITR).ge.FeCutOff ) then
         ! Muplus, because mu is plus for negative velocity if the Edc is >0
         ! See above for reversal if E<0
-        CALL lscsq_WsloPrm(ugr(iv), muplus, ZbrAry(ip), dWsduou, iWhichWay)
+        CALL lscsq_WsloPrm(ugr(iv), muplus, lh_out%zbar(ip), dWsduou, iWhichWay)
         dWsdu = dWsduou*ugr(iv)
         ! Note that dWsdu*ugr is always positive
         if (iWhichWay.ne.0) iGotRuna = iGotRuna+1
@@ -282,7 +285,7 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
      ! Muminus, because mu is neg for positive veloctiy if the Edc is >0
      ! See above for reversal if E<0
      if (fe(iv,ip,iITR).GE.FeCutOff) then
-        CALL lscsq_WsloPrm(ugr(iv), muminus, ZbrAry(ip), dWsduou, iWhichWay)
+        CALL lscsq_WsloPrm(ugr(iv), muminus, lh_out%zbar(ip), dWsduou, iWhichWay)
         dWsdu = dWsduou  * ugr(iv)
         ! Note that dWsdu*ugr is always positive
         if (iWhichWay.ne.0) iGotRuna = iGotRuna+1
@@ -304,8 +307,8 @@ end subroutine lscsq_mkj
 subroutine lscsq_GetEdc (DifAmt)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi
-  use lscsq_mod, only: lh_inp
-  use lscsq_mod, only: Edcary, Edcvec, npsij, psiary, npsi
+  use lscsq_mod, only: lh_inp, lh_out
+  use lscsq_mod, only: Edcary, Edcvec, npsij, npsi
   implicit none
 
   real(fp), intent(in) :: DifAmt
@@ -318,7 +321,7 @@ subroutine lscsq_GetEdc (DifAmt)
 
   Edc = 0.0_fp
   do j = 1, npsi
-     psi = PsiAry(j)
+     psi = lh_out%Psi(j)
      CALL lscsq_linr1d(NpsiJ, lh_inp%plflx, EdcVec, psi, Edc)
      Edc = Edc + DifAmt
      if (abs(Edc) .LE. MinEdc) then

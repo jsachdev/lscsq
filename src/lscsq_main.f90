@@ -572,12 +572,6 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
 
   call lscsq_output(PwrFnd, JrfFnd, Pqlfnd)
   write(*,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe18.11) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
-  
-  if (abs(sum(power_inp)-PwrFnd).GE.0.2*sum(power_inp).or.abs(PqlFnd-PwrFnd).GE.0.2*sum(power_inp)) then
-     write(ErrMsg,'('' TotPwr PwrFnd JrfFnd PqlFnd: '',4(1pe18.11) )') sum(power_inp),PwrFnd,JrfFnd,PqlFnd
-     call lscsq_LSCwarn(ErrMsg)
-  endif
-  ! write a warning if power is not well absorbed or if ray/ql answers are not too close; give current too
  
   if (iError .GT. 0) then
      CALL lscsq_LSCtrace(' Wr2TSC')
@@ -711,5 +705,39 @@ subroutine lscsq_ValInit
   dql(1:nv,1:npsi,1:2) = 0.0_fp
 
 end subroutine lscsq_ValInit
+
+
+SUBROUTINE lscsq_ProfInit
+
+  use iso_c_binding, only : fp => c_double
+  use lscsq_mod, only: npsi  
+  use lscsq_mod, only: npsij, psivec, lh_coeff, zcm3tom3, lh_inp, lh_const
+  use lscsq_mod, only: qe_eV, mp_Kg
+  use lscsq_mod, only: lh_out
+  implicit none
+
+  integer :: ip
+  real(fp) :: nee, tee, nii, pe2, pi2, dum 
+
+  do ip = 1, npsi
+     call map1d(lh_out%psi(ip),npsij,psivec,lh_coeff%ne,nee)
+     call map1d(lh_out%psi(ip),npsij,psivec,lh_coeff%Te,Tee)
+     call map1d(lh_out%psi(ip),npsij,psivec,lh_coeff%ni,nii)
+     lh_out%ne(ip) = zcm3tom3*nee
+     lh_out%Te(ip) = Tee
+     pe2 = 1.0e-20_fp*lh_const%pe2fac*nee
+     pi2 = 1.0e-20_fp*lh_const%pi2Fac*nii*(lh_inp%chrg/qe_eV)**2*mp_Kg/lh_inp%mass
+     dum= pe2/pi2*(lh_const%pi2Fac/lh_const%pe2Fac)
+     lh_out%zbar(ip) =  max(0.0_fp, min(1.0e2_fp, dum))  ! ensure 0 < Zbar < 100
+     lh_out%betZ(ip) = 0.2_fp*(1.0_fp+lh_out%zbar(ip))
+     if (lh_out%te(ip) .LE. 0.01_fp) then
+        lh_out%logL(ip) = 23.0_fp-log(sqrt(lh_out%ne(ip))*(1.0e-3_fp)**(-1.5_fp)/(lh_out%Te(ip)*sqrt(lh_out%Te(ip))))
+     else
+        lh_out%logL(ip) = 24.0_fp-log(sqrt(lh_out%ne(ip))*1.0e-3_fp/lh_out%te(ip))
+     endif
+  enddo
+
+end subroutine lscsq_ProfInit
+
 
 

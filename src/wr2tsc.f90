@@ -3,7 +3,7 @@ subroutine lscsq_PJrfIgrl
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi
   use lscsq_mod, only: npsi
-  use lscsq_mod, only: midary, psiary, neary
+  use lscsq_mod, only: midary
   use lscsq_mod, only: jrundot, nrundot, js, jsp,IrIntgrl
   use lscsq_mod, only: IpIntgrl,PqIntgrl,PqlTot
   use lscsq_mod, only: PrIntgrl, praytot, dvol
@@ -49,7 +49,7 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, zm3tocm3, zm2tocm2
   use lscsq_mod, only : zcm3tom3, zcm2tom2
-  use lscsq_mod, only: psiary,neary,teary,edcary,edcvec
+  use lscsq_mod, only: edcary,edcvec
   use lscsq_mod, only: IpIntgrl,IrIntgrl,PqIntgrl,PrIntgrl
   use lscsq_mod, only: midary,npsij 
   use lscsq_mod, only: vnormpos,vnormneg

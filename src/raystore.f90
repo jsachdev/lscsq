@@ -11,7 +11,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   use lscsq_mod, only: epsz, ecyc2, Epari, epql, epsl, izind, ivind, dvol
   use lscsq_mod, only: omega, wdDdw, woc4, fghz
   use lscsq_mod, only: Epar, Eper, Exy, epsq
-  use lscsq_mod, only: nzones, psiary, npsi
+  use lscsq_mod, only: nzones, npsi
   use lscsq_mod, only: senter, tenter, sleave, tleave
   use lscsq_mod, only: lh_const, lh_out, lh_inp
   implicit none
@@ -191,6 +191,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   real(fp) :: rzindold
   integer :: izindold
 
+  real(fp), dimension(4) :: bcompv
   real(fp) :: woc       
   real(fp) :: Btot, Bpol, Bphi, dDdEpar, dDdEparOld, ee, ex, ey, &
               Kpar, Kper, Kpar2, Kper2, psie2, qpar, veow2
@@ -220,6 +221,11 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   Bphi  = RBphi/y(1)
   Btot  = sqrt(Bpol**2 + Bphi**2)
   Kpar  = ( y(4)*Br + y(5)*Bz + y(6)/y(1)*Bphi)/Btot
+!  call bfieldv_comp(y(1),y(2),bcompv)
+!  Bpol  = sqrt(bcompv(1)**2 + bcompv(2)**2)
+!  Bphi  = bcompv(3)
+!  Btot  = sqrt(Bpol**2 + Bphi**2)
+!  Kpar  = ( y(4)*bcompv(1) + y(5)*bcompv(2) + y(6)/y(1)*bcompv(3))/Btot
 
   Kpar2 = Kpar**2
   Kper2 = Y(4)**2 + Y(5)**2 + (Y(6)/Y(1))**2 - Kpar2

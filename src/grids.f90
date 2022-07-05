@@ -35,7 +35,7 @@ SUBROUTINE lscsq_psigrids
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : npsij, npsi, psiary, midary
   use lscsq_mod, only : delpsi !, psimin,psilim
-  use lscsq_mod, only: lh_inp
+  use lscsq_mod, only: lh_inp, lh_out
   implicit none
 
   REAL(fp) :: dpp
@@ -44,7 +44,9 @@ SUBROUTINE lscsq_psigrids
 
   dpp = (lh_inp%plflx(npsij)-lh_inp%plflx(1))*TTINY/REAL(npsi-1,kind=fp)
   ! generate psiary grid
+  dpp = 0.0_fp
   CALL lscsq_ugrid(PsiAry, npsi, lh_inp%plflx(1)-dpp, lh_inp%plflx(npsij)+dpp) ! ENFORCES INTERPOLATION !!
+  lh_out%psi = psiary
 
   delpsi = abs(PsiAry(2)-PsiAry(1))
   do j=1,Npsi-1

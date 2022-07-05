@@ -31,8 +31,8 @@ subroutine lscsq_FeMkNorm
 !     determine normalized value of fe at ivZero vs psi
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: npsi,tailneps,tailteps
-  use lscsq_mod, only: vtherm, fenorm, neary
-  use lscsq_mod, only: lh_const
+  use lscsq_mod, only: vtherm, fenorm 
+  use lscsq_mod, only: lh_const, lh_out
   implicit none
 
   integer :: ip
@@ -40,7 +40,7 @@ subroutine lscsq_FeMkNorm
 
   TailFact = (1.0_fp+TailNeps*sqrt(TailTeps))/(1.0_fp+TailNeps)
   do ip = 1, npsi
-     FeNorm(ip) = lh_const%fe0*NeAry(ip)/Vtherm(ip)*TailFact
+     FeNorm(ip) = lh_const%fe0*lh_out%Ne(ip)/Vtherm(ip)*TailFact
   enddo
 
 end subroutine lscsq_FeMkNorm
@@ -165,8 +165,8 @@ SUBROUTINE lscsq_FeCvecs
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: tailteps, tailneps, tailpeps, tailvtrn
   use lscsq_mod, only: nu0psi, nucoll, dcoll, vtherm
-  use lscsq_mod, only: neary,lnlary,betzary, npsi, nv, vpar
-  use lscsq_mod, only: lh_const             
+  use lscsq_mod, only: npsi, nv, vpar
+  use lscsq_mod, only: lh_const, lh_out
   implicit none
 
   INTEGER :: ip, iv
@@ -187,15 +187,15 @@ SUBROUTINE lscsq_FeCvecs
      TransVel = vtherm(ip)*TailVtrn
      vth3 = vthsq*vtherm(ip)
      vth5 = vth3 * vthsq
-     nu0psi(ip) = NeAry(ip)/vth3
+     nu0psi(ip) = lh_out%Ne(ip)/vth3
      do iv = 1, nv
         v12 = vpar(iv)
         vpnorm = (v12 / vtherm(ip))
         harg = 1.0_fp + vpnorm**2
         hvpar = 1.0_fp/(harg*sqrt(harg))
 
-        Dcoll(iv, ip) = lh_const%DcollNorm * nu0psi(ip) * vthsq * hvpar * LnlAry(ip) * BetZAry(ip)
-        nuColl(iv, ip) = lh_const%nuNorm * nu0psi(ip) * hvpar * v12 * LnlAry(ip) * BetZAry(ip)
+        Dcoll(iv, ip) = lh_const%DcollNorm * nu0psi(ip) * vthsq * hvpar * lh_out%logL(ip) * lh_out%BetZ(ip)
+        nuColl(iv, ip) = lh_const%nuNorm * nu0psi(ip) * hvpar * v12 * lh_out%logL(ip) * lh_out%BetZ(ip)
  
         if ( TailPeps .GT. 0.0_fp .and. abs(vpar(iv)) .GT. TransVel) then
            Dcoll (iv,ip) = Dcoll(iv,ip) * TailT12
@@ -208,14 +208,14 @@ end subroutine lscsq_FeCvecs
 !     -----------------------------------------------------------------
 subroutine lscsq_mkVth
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi, teary,vtherm,vperpsq
-  use lscsq_mod, only: lh_const
+  use lscsq_mod, only: npsi, vtherm,vperpsq
+  use lscsq_mod, only: lh_const, lh_out
   implicit none
 
   integer :: ip
 
   do ip = 1, npsi
-     Vtherm(ip) = lh_const%VthNorm*sqrt(TeAry(ip))
+     Vtherm(ip) = lh_const%VthNorm*sqrt(lh_out%Te(ip))
      VperpSq(ip) = Vtherm(ip)**2
   enddo
 

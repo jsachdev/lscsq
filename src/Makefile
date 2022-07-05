@@ -39,8 +39,8 @@ ifneq (,$(findstring ifort, $(FC)))
 	CFLAGS  := -O -w #-mp  #-cxxlib-gcc -gcc-version=333
 	DCFLAGS := -g  #-cxxlib-gcc -gcc-version=333
 
-	FFLAGS  := -g -O3 -w -mcmodel small -restrict -align -debug
-	DFFLAGS := -g -O0 -w -mcmodel small -restrict 
+	FFLAGS  := -g -O3 -w -mcmodel small -restrict -align -debug -fpp
+	DFFLAGS := -g -O0 -w -mcmodel small -restrict -fpp
 else ifneq (,$(findstring nvfortran, $(FC)))
         CFLAGS  := -O
         DCFLAGS := -g
@@ -50,9 +50,9 @@ else ifneq (,$(findstring gfortran, $(FC)))
 	CSPECIAL= -fno-align-commons -fbounds-check -fbacktrace -fPIC -fcheck=pointer
         CFLAGS  := -O
         DCFLAGS := -g
-        FFLAGS  := -g -std=f2003 -O3
-        DFFLAGS := -g -Wall -std=f2003 -finit-real=zero -fcheckall -fbacktrace \
-		   -ffpe-trap=invalid -ffpe-summary=invalid -fdebug-aux-vars
+        FFLAGS  := -g -std=f2003 -O3 -cpp
+        DFFLAGS := -g -cpp -finit-real=zero -fcheck=all -fbacktrace \
+		             -ffpe-trap=invalid -ffpe-summary=invalid
 else
         CFLAGS  := -O
         DCFLAGS := -g
@@ -61,24 +61,24 @@ else
 endif
 
 ifdef DEBUG
-	FFLAGS := $(DFFLAGS)
+	FFLAGS := $(DFFLAGS) -DDEBUG=$(DEBUG)
 	CFLAGS := $(DCFLAGS)
 endif
-
 
 # compile all .f90 / .c files in directory
 ALL_F := $(subst .f90,.o, $(wildcard *.f90))
 ALL_C := $(subst .c,.o, $(wildcard *.c))
 M_OBJ := driver.o
-OBJECTS := lscsq_mod.o nml2lsc.o fits.o plasejv.o  \
+OBJECTS := lscsq_mod.o nml2lsc.o fits.o   \
           grids.o matr.o power.o raystore.o grap.o grapgrd.o ql.o raytrace.o cycle.o fe.o       \
-          jrf.o rayini.o wr2tsc.o lscsq_main.o 
+          jrf.o rayini.o wr2tsc.o lscsq_map2D.o lscsq_main.o 
 
 
 # Includes, F90 Use files
-INCLUDES = -I./ -I`nf-config --includedir`
+INCLUDES = -I./ -I/usr/include -I${PSPLINE_HOME}/include -I`nf-config --includedir` 
 
 L_NETCDF  =  `nc-config --libs` `nf-config --flibs`
+L_PSPLINE := -L${PSPLINE_HOME}/lib -lpspline
 
 
 %.o: %.f90
@@ -95,7 +95,7 @@ all:  $(EXE) lib
 lib: lib$(LIBNAME).a
 
 $(EXE): $(OBJECTS) $(M_OBJ)
-	$(NICE) $(FC) $(FFLAGS) -o $@ $^ $(L_NETCDF) $(L_MKL)
+	$(NICE) $(FC) $(FFLAGS) -o $@ $^ $(L_NETCDF) $(L_PSPLINE) $(L_MKL)
 #	chmod 755 $(EXE)
 
 lib$(LIBNAME).a: $(OBJECTS)

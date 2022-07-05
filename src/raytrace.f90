@@ -168,7 +168,9 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
   iBndsErr = iBndsErr + 1
   if (iBndsErr .GE. nBndsErr) then
      iBndsErr = 0
+#if DEBUG==2
      write(*,'('' Rays out of bounds; recovered'',i4,'' times'')') nBndsErr
+#endif
   endif
   goto 10
 
