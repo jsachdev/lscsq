@@ -5,15 +5,9 @@ on:
     types: [opened, labeled, unlabeled, synchronize]
 
 jobs:
-  check_empty:
-    runs-on: ubuntu-latest
-    if: ${{github.event.pull_request.labels.*.name[0]}}
-    steps:
-      - run: echo "Labels are empty, assign a label"
   check_labels:
-    needs: [check_empty]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Check major minor patch
-        run: echo Hello World
+        run: !(contains(github.event.issue.labels.*.name, 'major') && contains(github.event.issue.labels.*.name, 'minor') && contains(github.event.issue.labels.*.name, 'patch'))
