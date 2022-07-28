@@ -16,4 +16,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Check major minor patch
-        run: echo Hello
+        run: echo Hello World
