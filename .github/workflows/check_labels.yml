@@ -11,4 +11,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Check major minor patch
         if: contains(github.event.pull_request.labels.*.name, 'major') && contains(github.event.pull_request.labels.*.name, 'minor') && contains(github.event.pull_request.labels.*.name, 'patch')
-        run: exit 1
+        run: echo "Set only one label of major, minor, and patch" && exit 1
+      - name: Check major minor
+        if: contains(github.event.pull_request.labels.*.name, 'major') && contains(github.event.pull_request.labels.*.name, 'minor')
+        run: echo "Set only one label of major, minor, and patch" && exit 1
+      - name: Check major patch
+        if: contains(github.event.pull_request.labels.*.name, 'major') && contains(github.event.pull_request.labels.*.name, 'patch')
+        run: echo "Set only one label of major, minor, and patch" && exit 1
+      - name: Check minor patch
+        if: contains(github.event.pull_request.labels.*.name, 'minor') && contains(github.event.pull_request.labels.*.name, 'patch')
+        run: echo "Set only one label of major, minor, and patch" && exit 1
