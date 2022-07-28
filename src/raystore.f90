@@ -5,10 +5,10 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   use lscsq_mod, only : qe_eV, me_g
   use lscsq_mod, only: Ezsq,distry,woc2,y,detrry, iray
   use lscsq_mod, only: izone, delpsi,Powrry,RofRay,zofray,rzind
-  use lscsq_mod, only: pofray, nparry, nperry, vpar, lstop, npsij
+  use lscsq_mod, only: pofray, nparry, nperry, lstop, npsij
   use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
   use lscsq_mod, only: d1, d2, d4, power, npar, iray, dlnPdsK, dlnPdsX
-  use lscsq_mod, only: epsz, ecyc2, Epari, epql, epsl, izind, ivind, dvol
+  use lscsq_mod, only: epsz, ecyc2, Epari, epql, epsl, dvol
   use lscsq_mod, only: omega, wdDdw, woc4, fghz
   use lscsq_mod, only: Epar, Eper, Exy, epsq
   use lscsq_mod, only: nzones, npsi
@@ -190,6 +190,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   real(fp):: RzindNew, RzindCrs, sNew, tNew, sSlope, tSlope
   real(fp) :: rzindold
   integer :: izindold
+  integer :: iv
 
   real(fp), dimension(4) :: bcompv
   real(fp) :: woc       
@@ -199,7 +200,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   real(fp) :: lscsq_DispRela, det, dum
   real(fp) :: NparDead = 9.8_fp 
   real(fp) :: NperDead = 147.0_fp
-  real(fp) :: MaxwDead = 1.0e-12_fp
+  real(fp) :: MaxwDead = 1.0e-09_fp !1.0e-12_fp
   real(fp) :: MxdPdz   = 0.90_fp
   real(fp) :: SMALL    = 1.0e-30_fp
 
@@ -215,17 +216,12 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   !    Find location and various parameters.
   !    This is the NORMAL BEGINNING point, in that all initializations have been made
   !    and the ray is progressing through zones.
-  
+
   CALL lscsq_plasma2d (y(1),y(2), psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
   Bpol  = sqrt(Br**2 + Bz**2)
   Bphi  = RBphi/y(1)
   Btot  = sqrt(Bpol**2 + Bphi**2)
   Kpar  = ( y(4)*Br + y(5)*Bz + y(6)/y(1)*Bphi)/Btot
-!  call bfieldv_comp(y(1),y(2),bcompv)
-!  Bpol  = sqrt(bcompv(1)**2 + bcompv(2)**2)
-!  Bphi  = bcompv(3)
-!  Btot  = sqrt(Bpol**2 + Bphi**2)
-!  Kpar  = ( y(4)*bcompv(1) + y(5)*bcompv(2) + y(6)/y(1)*bcompv(3))/Btot
 
   Kpar2 = Kpar**2
   Kper2 = Y(4)**2 + Y(5)**2 + (Y(6)/Y(1))**2 - Kpar2
@@ -254,7 +250,7 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   !     dDdkABS is partial of D wrt vector k, abs value
   !     The - is because of damping; the 2. is because power is field ^2
 
-  ex    = - (woc2*Epar - Kper2)/(Kper*Kpar)
+  ex    = -(woc2*Epar - Kper2)/(Kper*Kpar)
   ey    =(ex*(Eper - Kpar2/woc2) + Kper*Kpar/woc2) / Exy
   ee    = 1.0_fp + epsq/ecyc2
   epsz  = eps0*(1.0_fp + ee*(ex**2 + ey**2)-Exy*ex**2)
@@ -282,8 +278,12 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
      tenter(izone,iray) = tleave(izone-1,iray)
      senter(izone,iray) = sleave(izone-1,iray)
   endif
-  izindold = izind(izone,iray)
+  izindold = lh_out%izind(izone,iray)
   RzindOld = rzind(izone,iray)
+
+!  if (izone.lt.10) write(*,*) 'izone=',izone
+!  if (izone.lt.10) write(*,*) 'y:',y
+
 
   RofRay(izone,iray)   = y(1)
   ZofRay(izone,iray)   = y(2)
@@ -301,6 +301,8 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
   d2 = abs(d2)
   d4 = abs(d4)
   det = det/max(d1, d2, d4)
+
+!  if (izone.lt.10) write(*,*) 'det=',det
 
   DetrRy(izone,iray) = det
 
@@ -347,9 +349,10 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
      ! Compute the desired parameters for the zone we just left.
      ! npar according to the velocity table 15Jan93
      npar(izone,iray)  = accum1(4)
-     ivind(izone,iray) = lscsq_ivtabl(npar(izone,iray))
-     npar(izone,iray)  = 1.0_fp/vpar(ivind(izone,iray)) ! fmp-why this replacement?
-     izind(izone,iray) = IzindOld
+     lh_out%ivind(izone,iray) = lscsq_ivtabl(npar(izone,iray))
+     iv = lh_out%ivind(izone,iray)
+     npar(izone,iray)  = 1.0_fp/lh_out%vpar(iv) ! fmp-why this replacement?
+     lh_out%izind(izone,iray) = IzindOld
 
      ezsq(izone,iray) = accum1(1)*(tLeave(izone,iray)-tEnter(izone,iray))/omega/dVol(IzindOld)
      dlnPdsK(izone,iray) = accum1(2)*lh_const%cEparik/(npar(izone,iray)*woc)**2 * (tLeave(izone,iray)-tEnter(izone,iray))
@@ -390,13 +393,13 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
         dlnPdsK(izone,iray)  = dlnPdsK(izone-1,iray)
         dlnPdsX(izone,iray)  = dlnPdsX(izone-1,iray)
         npar   (izone,iray)  = npar   (izone-1,iray)
-        ivind  (izone,iray)  = ivind  (izone-1,iray)
+        lh_out%ivind  (izone,iray)  = lh_out%ivind(izone-1,iray)
         dum = 1.0_fp+dlnPdsX(izone-1,iray)
         dum =  max (MxdPdZ,dum)
         dum =  min (dum,1.0_fp)
 
         PowrRy (izone,iray)       = PowrRy(izone-1,iray)*dum
-        izind  (izone,iray)  = IzindNew
+        lh_out%izind  (izone,iray)  = IzindNew
      else
         ! But, if we used up all the zones, quit as fast as you can.
         izone = nzones
@@ -409,8 +412,10 @@ SUBROUTINE lscsq_E2byPr(ninac1,accum1,rayqt1)
      if ( abs(nperRy(izone,iray)).GT.NperDead ) Lstop = 1
      ! If all power is gone in Maxwellian stop the calculation now.
      if ( PowrRy(izone,iray) .LT. MaxwDead ) then
+!     if ( (PowrRy(izone,iray) .LT. MaxwDead).and. &
+!        (abs(PowrRy(izone,iray)-PowrRy(izone-1,iray)).lt.1e-6 )) then
+!     if (abs(PowrRy(izone,iray)-PowrRy(izone-1,iray))/PowrRy(izone,iray).lt.1.0e-03) then
         Lstop = 1
-        ! need to transform these flags into a coding for stop reason in the CDF output
      endif
   endif
   ! See if we jumped more than one zone.  Report if so.
@@ -431,7 +436,8 @@ subroutine lscsq_RyZnInit
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: nzones, nrays
-  use lscsq_mod, only: rofray, zofray, ivind, izind
+  use lscsq_mod, only: lh_out
+  use lscsq_mod, only: rofray, zofray 
   use lscsq_mod, only: distry, detrry, ezsq, timery, powrry, npar, ntor
   use lscsq_mod, only: dlnPds, rtPsRy, nperry, pofray, dlnPdsK,dlnPdsX, NparRy
   implicit none
@@ -453,8 +459,8 @@ subroutine lscsq_RyZnInit
   dlnPdsK(1:nzones,1:nrays) = 0.0_fp
   dlnPdsX(1:nzones,1:nrays) = 0.0_fp
 
-  izind(1:nzones,1:nrays) = 0
-  ivind(1:nzones,1:nrays) = 0
+  lh_out%izind(1:nzones,1:nrays) = 0
+  lh_out%ivind(1:nzones,1:nrays) = 0
   npar(2:nzones,1:nrays) = 0.0_fp   ! But do npar separately since the
 
   NparRy(1,1:nrays) = npar(1,1:nrays)

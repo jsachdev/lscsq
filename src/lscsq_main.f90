@@ -257,10 +257,6 @@
 !            Ne(r), Pray(r) attached to PlFlg(26)
 !     LSC_28Mar94
 !        0.  Change the Pitch of the field line graph to degrees; range: +/- 6
-!        1.  Add plot of Pray(v) for various psi. Requested by Stefano for the
-!            Boulder meeting....to show that PBX is relevant to TPX. Flag 19
-!        2.  Also, add plot of Pray(iv) summed over all positions and
-!            Plaunch at the edge in v, nparallel, and 1/nparallel(?) space.
 !     LSC_10Dec93
 !        0.  Allow the use of phony foils to see the Photon Temperature
 !            as determined at lower energy might be higher.  Foil code
@@ -400,23 +396,22 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: nrays, nzones, npsij, ind_ray
-  use lscsq_mod, only: npols, ntors, power, npar, ntor, npol, nth
+  use lscsq_mod, only: npols, ntors, power, npar, npol, nth
   use lscsq_mod, only: iendry,iraytrsi, i1stcall
   use lscsq_mod, only: nant, power_inp
   use lscsq_mod, only: ierror
   use lscsq_mod, only: totpwr, diffujrf
-  use lscsq_mod, only: iraytrsi, Edcvec
-  use lscsq_mod, only: ok_ray, nz_ind, ivind
+  use lscsq_mod, only: iraytrsi, npsi
   use lscsq_mod, only: lh_inp, lh_out
-  use lscsq_mod, only: dql, fe, dfdv
   use lscsq_mod, only: powers_ant, centers_ant, widths_ant, Spec_ant, ntor_ant
-  use lscsq_mod, only: spec, powers, centers, widths, nant, npeaks
+  use lscsq_mod, only: powers, centers, widths, nant, npeaks
+  use pl_types
   implicit none
 
   character(len=70) :: ErrMsg
 
-  integer :: iry, ity, ipy, i1, i2
-  integer :: nzthisray, i, j
+  integer :: iry, ity, ipy, ipk, ian, i1, i2
+  integer :: i, j, n, np
 
   integer, intent(in) :: iRayTrsx    ! 0 use old ray data, and old f_e(v); use new E_dc for the current
                                      ! 1 calculate new rays, and f_e(v), from new equilibrium
@@ -424,8 +419,12 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
   integer, intent(out) :: iErrorx    ! 0 LSC finishes without errors; 1 (or more) errors found
                                      !-1 LSC found an error; calling program can keep going
  
-  real(fp)  :: PwrFnd, JrfFnd, PqlFnd
+  real(fp)  :: PwrFnd, JrfFnd, PqlFnd, edc, Nfac
   integer :: nwarning
+
+  real(fp), dimension(:), allocatable :: spec
+  real(fp), dimension(:), allocatable :: ntor
+  type(ray_init), dimension(:,:), allocatable :: spec_ini
 
 !     Confusion possible over the suffix Vec vec and Ary ary; explained below:
 !     Vec as in PsiVec ... is on the TSC grid, not on the LSC grid: that is Ary
@@ -442,11 +441,11 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
   iError   =  0
   iErrorx  =  0
 
-  if (allocated(lh_out%fe)) then
-     dql = lh_out%dql
-     fe  = lh_out%fe
-     dfdv= lh_out%dfdv
-  endif
+!  if (allocated(lh_out%fe)) then
+!     dql = lh_out%dql
+!     fe  = lh_out%fe
+!     dfdv= lh_out%dfdv
+!  endif
 
 ! Clear warning counter; iEdc flag
   nWarning = 0
@@ -476,49 +475,63 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
   endif
  
   if(iRayTrsi.eq.1)  then
+     np = maxval(npeaks)
+     if(.not.allocated(spec_ini)) allocate(spec_ini(np,nant))
      do i=1,nant
        TotPwr = power_inp(i)
+       if(allocated(powers)) deallocate(powers)
+       allocate(powers(npeaks(i)))
+       if(allocated(centers)) deallocate(centers)
+       allocate(centers(npeaks(i)))
+       if(allocated(widths)) deallocate(widths)
+       allocate(widths(npeaks(i)))
+       powers(1:npeaks(i)) = powers_ant(1:npeaks(i),i)  
+       centers(1:npeaks(i)) = centers_ant(1:npeaks(i),i)  
+       widths(1:npeaks(i)) = widths_ant(1:npeaks(i),i)  
        do j=1,npeaks(i)
-          powers(j) = powers_ant(j,i)  
-          centers(j)= centers_ant(j,i)  
-          widths(j) = widths_ant(j,i)  
-          call lscsq_SpecInit
-          ! generate launch spectrum with
-          ! nGrps humps at centers(nGrps) with widths(nGrps) & relative powers(nGrps).
-          ! But if nGrps = 0, then get a Brambilla spectrum using the JE Stevens code.
-        enddo
-        ntor_ant(:,i) = ntor
-        Spec_ant(:,i) = Spec
+          if(allocated(spec)) deallocate(spec)
+          if(allocated(ntor)) deallocate(ntor)
+          n = ntors(j,i)
+          spec_ini(j,i)%ntors = ntors(j,i)
+          allocate(spec(n))
+          allocate(ntor(n))
+          spec(1:n) = 0.0_fp
+          ntor(1:n) = 0.0_fp
+          allocate(spec_ini(j,i)%spec(n))
+          allocate(spec_ini(j,i)%ntor(n))
+          spec_ini(j,i)%ntor = 0.0_fp
+          spec_ini(j,i)%spec = 0.0_fp
+          call lscsq_SpecInit(powers(j),centers(j),widths(j),n,spec,ntor)
+          spec_ini(j,i)%spec = spec*powers(j)
+          spec_ini(j,i)%ntor = ntor
+       enddo
      enddo
+
+
+
+
      if (iError .GT. 0) then
         call lscsq_LSCtrace('SpecInit')
         iErrorx = iError
         return
      endif
-  endif
-  
 
-  if (iRayTrsi.eq.1) then
-     do i=1,nant
-        ntor = ntor_ant(:,i)
-        i1 = 1+(i-1)*ntors*npols*nth
-        i2 = i*ntors*npols*nth
-        do iry=i1,i2  
-           ity = ind_ray(1,iry)
-           npar(1,iry) = ntor(ity)
-        enddo
-        call lscsq_rspwr(1.0_fp)
-     enddo
+
+
+     do i=1,nrays
+        ity = ind_ray(1,i)
+        ipk = ind_ray(3,i) 
+        ian = ind_ray(5,i)
+        npar(1,i) = spec_ini(ipk,ian)%ntor(ity) 
+     enddo     
      ! apply the launch spectrum to the total power.
+     call lscsq_rspwr(1.0_fp,spec_ini)
      if (iError .GT. 0) then
         CALL lscsq_LSCtrace ( ' PowrInit')
         iErrorx = iError
         return
      endif
-  endif
-
-  if(iRayTrsi.eq.1) then
-     call lscsq_DoRay
+     call lscsq_DoRay(spec_ini)
      if (iError .GT. 0) then
         CALL lscsq_LSCtrace(' DoRay')
         iErrorx = iError
@@ -527,19 +540,7 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
      ! fmp - this is only for the output, can probably be removed. It stores
      ! the last useful zone for plotting the arrays, but this check can be done
      ! in any script for plotting.
-     do j=1,nrays
-        nzThisRay=nzones
-        do i=1,nzones
-           if(ivind(i,j) .ne. 0) cycle  
-           nzThisRay=i
-           exit
-        enddo
-        nz_ind(j) = nzthisray
-     enddo
-  endif
-
-  if (iRayTrsi.eq.1) then
-     call lscsq_RampPwr
+     call lscsq_RampPwr(spec_ini)
      if (iError .GT. 0) then
         call lscsq_LSCtrace (' RampPwr')
         iErrorx = iError
@@ -548,6 +549,15 @@ subroutine lscsq_main(iRayTrsx, iErrorx)
      call lscsq_PdepCalc    ! compute Prf
   endif
 
+  ! this needs to be calculated before calling the current calculations. It
+  ! needs to be done here because the Edc field changes between successive
+  ! iterations in LSC. If we run the code standalone, it does not matter where
+  ! it is calculated, but if the code is run in TRANSP, the new Edc field needs
+  ! to be updated at each iteration.
+  do j=1,npsi
+     CALL lscsq_linr1d(npsij, lh_inp%plflx, lh_inp%Edc, lh_out%psi(j), Edc)
+     lh_out%Edc(j) = Edc
+  enddo
   ! if iraytr=0, only the current is calculated
   call lscsq_JdepCalc
 
@@ -589,88 +599,42 @@ end subroutine lscsq_main
 
 !
 !     SpecInit begins -------------------------------------------------|
-subroutine lscsq_SpecInit
+subroutine lscsq_SpecInit(power,center,width,n,spec,ntor)
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : zero, one
-  use lscsq_mod, only: ntor, npol, npar, spec, ntors, npols,ngrps 
-  use lscsq_mod, only: ngrps
-  use lscsq_mod, only: powers, centers, widths, fghz
-  use lscsq_mod, only: nrays, nzones
-  use lscsq_mod, only: nparmin, nparmax, npolmin, npolmax, iraytrsi
-  use lscsq_mod, only: turnnegs, power, i1stcall
+  use lscsq_mod, only: npol, npar, npols
+  use lscsq_mod, only: npolmin, npolmax
   implicit none
 
-  character(len=80) :: pline
-  character(len=40) :: MyString
-  integer :: igrup, jgrup, i, iry, ity, it0, ipy, imaxp
-  integer :: ilim1,ilim2
-  integer :: nRyPrGr
-  real(fp) :: RayGroup
-  real(fp), dimension(ngrps) :: GrpNorm,FrqPows
-!
-!  DMC Mar 2011: for multi-frequency code
-!  fmp - this part needs to be redesigned. Multi-frequency applies only to
-!  multiple antennae not to multiple groups
-  integer, dimension(ngrps) :: num_npll,inrank
-  integer :: itmp,irank,insum,indiff, iant
-  real(fp), dimension(ngrps) :: npll_min, npll_max
-  real(fp), dimension(ntors,ngrps) :: ens, sofns
-  real(fp), dimension(ngrps*ntors) :: ens1, sofns1
-  integer, dimension(ntors,ngrps) :: ifrqs
-  integer, dimension(ntors*ngrps) :: ifrqs1
+  integer, intent(in) :: n
+  real(fp), intent(in) :: power
+  real(fp), intent(in) :: center
+  real(fp), intent(in) :: width
+  real(fp), dimension(n), intent(inout) :: ntor
+  real(fp), dimension(n), intent(inout) :: spec
 
-  real(fp) :: lscsq_SpShape, lscsq_MaxOfAry, MaxPwr, smx
-  real(fp) :: TstPwr, dnpll, dspec, tmpi
-  real(fp) :: excluded = 1.2_fp
-  real(fp) :: xmin = -10.0_fp
-  real(fp) :: xmax = +10.0_fp
+  real(fp) :: nparmin, nparmax
+  real(fp) :: lscsq_SpShape
 
-  integer :: ixmjr=2
-  integer :: ixmnr=5
-  integer :: iymjr=2
-  integer :: iymnr=1
+  integer :: i
 
   ! Make the spectrum in poloidal number
   npol(1) = 0.5_fp*(npolmax+npolmin)
   if (npols.GT.1) call lscsq_ugrid(npol,npols,npolmin,npolmax)
 
   !     ........................................................................
-  ! If not doing a Brambilla calculation, make a model spectrum using gaussian form.
-  ! at this time, only option=0 is available, may want to remove this if
-!  IF(DoBram .EQ. 0) then
-     CALL lscsq_ugridEXC (ntor, ntors, nparmin, nparmax, EXCLUDED)
-     !  this is the traditional (single frequency) LSC code.  It can create
-     !  some nll values with very low associated power, which likely results
-     !  in ray computations that do not affect results...  But, overlapping
-     !  nll contributions from different couplers are nicely combined.
-     do igrup = 1, nGrps
-        GrpNorm(igrup) = zero
-        do i = 1, ntors
-           GrpNorm(igrup) = GrpNorm(igrup) + lscsq_SpShape(ntor(i), centers(igrup), widths(igrup))
-        enddo
-        GrpNorm(igrup) = one / GrpNorm(igrup)
-     enddo
+  ! Using gaussian form.
+!  nparmin = center-width
+!  nparmax = center+width
+  nparmin = center-0.5_fp*width
+  nparmax = center+0.5_fp*width
+  call lscsq_ugrid(ntor,n,nparmin,nparmax)
 
-     Spec(1:ntors) = zero
-     do ity = 1, ntors
-        do igrup = 1, nGrps
-           RayGroup = GrpNorm(igrup) * powers(igrup)*lscsq_SpShape(ntor(ity), centers(igrup), widths(igrup))
-           Spec(ity) = Spec(ity) + RayGroup
-        enddo
-     enddo
-     spec = spec/sum(spec)
-!  endif
-
-  ! It can happen that there are two rays at the same n_-par. Check and report
-  do i = 2, ntors
-     if ( ntor(i) .ne. ntor(i-1) ) cycle    
-     write(MyString,'(''identical nll at '',1pe10.3)') ntor(i)
-     CALL lscsq_LSCwarn(MyString)
+  Spec(1:n) = 0.0_fp
+  do i = 1, n
+     spec(i) = lscsq_SpShape(ntor(i), center, width)
   enddo
- 
-600 format(/,'  Ray Index     n-tor  Power(W)  indx_freq')
-601 format(1x,     8x,i2,1x,1pe9.2,1x,1pe9.2,4x,i2  )
+  spec = spec/sum(spec)
  
 end subroutine lscsq_SpecInit
 
@@ -694,7 +658,7 @@ end function lscsq_SpShape
 subroutine lscsq_ValInit
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : dql, nv, npsi
+  use lscsq_mod, only : nv, npsi
   implicit none
 
 !  CALL lscsq_MiscInit    !  doesn't fit elsewhere
@@ -702,7 +666,7 @@ subroutine lscsq_ValInit
   CALL lscsq_ProfInit    !  interpolate Ne, Ni, Te, Ti to the PsiAry grid
   CALL lscsq_FeInit      !  compute constants needed for solution of Fe ....
 !  CALL lscsq_DqlInit     !  and for solution of Dql
-  dql(1:nv,1:npsi,1:2) = 0.0_fp
+!  dql(1:nv,1:npsi,1:2) = 0.0_fp
 
 end subroutine lscsq_ValInit
 
@@ -713,11 +677,11 @@ SUBROUTINE lscsq_ProfInit
   use lscsq_mod, only: npsi  
   use lscsq_mod, only: npsij, psivec, lh_coeff, zcm3tom3, lh_inp, lh_const
   use lscsq_mod, only: qe_eV, mp_Kg
-  use lscsq_mod, only: lh_out
+  use lscsq_mod, only: lh_out, lh_inp
   implicit none
 
   integer :: ip
-  real(fp) :: nee, tee, nii, pe2, pi2, dum 
+  real(fp) :: nee, tee, nii, pe2, pi2, dum
 
   do ip = 1, npsi
      call map1d(lh_out%psi(ip),npsij,psivec,lh_coeff%ne,nee)

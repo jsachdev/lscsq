@@ -30,11 +30,11 @@ end subroutine lscsq_smooth
 subroutine lscsq_DqlGen
   ! deposit wave energy into dql matrix
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : power, ezsq, ivind, izind, rfudgdmp
-  use lscsq_mod, only : vpar, fghz  
-  use lscsq_mod, only : dql, qlsm, nv, npsi, nsmoo
-  use lscsq_mod, only: nrays, nzones, ind_ray, ok_ray
-  use lscsq_mod, only: lh_const
+  use lscsq_mod, only : power, ezsq, rfudgdmp
+  use lscsq_mod, only : fghz  
+  use lscsq_mod, only : qlsm, nv, npsi, nsmoo
+  use lscsq_mod, only: nrays, nzones, ind_ray
+  use lscsq_mod, only: lh_const, lh_out
   implicit none
 
   integer :: iv, ip
@@ -59,37 +59,37 @@ subroutine lscsq_DqlGen
 !
 !     .                                 Clear the unsmoothed part of Dql
 
-  dql(1:nv,1:npsi,1:2) = 0.0_fp
+  lh_out%dql(1:nv,1:npsi,1:2) = 0.0_fp
   ! Fill up the unsmoothed part of Dql
   do iry  = 1, nrays
       do izn   = 1, nzones-1
-        iv = ivind(izn,iry)
+        iv = lh_out%ivind(izn,iry)
         ! If  ivind=0, the ray was stopped before reaching this izone (izn).
         !    If Power=0, no contribution to Dql. No calculation is appropriate.
         if (iv.EQ.0 .or. Power(izn,iry).EQ.0.0_fp) cycle    
-        ip = izind(izn,iry)
-        if (iv.eq.nv) dv = vpar(iv)-vpar(iv-1)
-        if (iv.lt.nv) dv = vpar(iv+1)-vpar(iv)
+        ip = lh_out%izind(izn,iry)
+        if (iv.eq.nv) dv = lh_out%vpar(iv)-lh_out%vpar(iv-1)
+        if (iv.lt.nv) dv = lh_out%vpar(iv+1)-lh_out%vpar(iv)
         ! DMC: 1/frequency factor added here; see comments in DqlNorm subroutine
-        Dql(iv,ip,1) = Dql(iv,ip,1)+Power(izn,iry)*rFudgDmp(izn,iry)   &
-                     * Ezsq(izn,iry)*abs(vpar(iv))/dv/fghz(iry) 
+        lh_out%Dql(iv,ip,1) = lh_out%Dql(iv,ip,1)+Power(izn,iry)*rFudgDmp(izn,iry)   &
+                     * Ezsq(izn,iry)*abs(lh_out%vpar(iv))/dv/fghz(iry) 
       enddo        
   enddo
 
   ! Multiply by normalization
-  Dql = lh_const%Dqlnorm*Dql  
+  lh_out%Dql = lh_const%Dqlnorm*lh_out%Dql  
 
   ! Copy unsmoothed into space for smoothed
-  Dql(1:nv,1:npsi,2) = Dql(1:nv,1:npsi,1)
+  lh_out%Dql(1:nv,1:npsi,2) = lh_out%Dql(1:nv,1:npsi,1)
 
   ! Smooth the new copy
-  call lscsq_Smooth(Dql(1:nv,1:npsi,2), nv, npsi, nsmoo, qlsm)
+  call lscsq_Smooth(lh_out%Dql(1:nv,1:npsi,2), nv, npsi, nsmoo, qlsm)
 
 end subroutine lscsq_dqlgen    
 !     -----------------------------------------------------------------
 INTEGER FUNCTION lscsq_ivtabl(np)
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : vpar, ivzero, nv
+  use lscsq_mod, only : ivzero, nv, lh_out
   implicit none
 
   INTEGER :: iv
@@ -98,8 +98,8 @@ INTEGER FUNCTION lscsq_ivtabl(np)
       
   vv = 1.0_fp / np
 
-  iv = minloc(abs(vpar-vv),1)
-  if (vpar(iv).lt.vv) iv=iv+1 
+  iv = minloc(abs(lh_out%vpar-vv),1)
+  if (lh_out%vpar(iv).lt.vv) iv=iv+1 
 
 ! v grid symmetry question: use vpar nearby of smaller energy
   if( iv .GT. ivZero) then

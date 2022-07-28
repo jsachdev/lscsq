@@ -8,7 +8,7 @@ subroutine lscsq_ugrid(vector,npts,vmin,vmax)
 
   integer :: j
   real(fp) :: dv
-   
+
   ! generate a uniform grid vector(j) from vmin to vmax
   if(npts.le.1)return
   dv=(vmax-vmin)/real(npts-1,kind=fp)
@@ -18,58 +18,6 @@ subroutine lscsq_ugrid(vector,npts,vmin,vmax)
 
 end subroutine lscsq_ugrid
 
-subroutine lscsq_ugridEXC(vector,npts,vmin,vmax,EXCLUDED)
-  ! generate a uniform grid vector(j) from vmin to vmax
-  ! excluding points with abs value .le. EXCLUDED
-
-  use iso_c_binding, only : fp => c_double
-  implicit none
-
-  integer, intent(in) :: npts
-  real(fp), intent(in) :: vmin, vmax, excluded
-  real(fp), intent(out), dimension(npts) :: vector
-
-  integer :: ipts
-  real(fp) :: dv 
-  real(fp) :: vmaxPLUS, vminPLUS, vmaxMINU, vminMINU, v
- 
-  if(npts .LE. 1 .or. vmax .LE. vmin ) return
-  vmaxPLUS =  max ( abs(EXCLUDED) , vmax )
-  vminPLUS =  max ( abs(EXCLUDED) , vmin )
-  vmaxMINU =  min (-abs(EXCLUDED) , vmax )
-  vminMINU =  min (-abs(EXCLUDED) , vmin )
-  dv       =  max ( (vmaxPLUS-vminPLUS) , 0.0_fp) +                    &
-              max ( (vmaxMINU-vminMINU) , 0.0_fp)
-  dv = dv/real(npts-1,kind=fp)
-
-  if (dv .LE. 0.0_fp) return
-
-! fmp - need to simplify the logic below and remove the gotos 
-  v = vmin
-  do ipts=1,npts
-     vector(ipts) = v
-     v = v + dv
-     if (abs(v) .LT. abs(EXCLUDED)) go to 20
-  enddo
-
-  return
- 
-  ! return for normal exit when the excluded zone is not an issue
- 
-20   continue
-
-  v = vmax
-  do ipts=npts,1,-1
-     vector(ipts) = v
-     v = v - dv
-     if (abs(v) .LT. abs(EXCLUDED)) return   
-  enddo
- 
-  ! return for unusual exit when the positive used zone comes
-  ! after a negative used zone
-
-end subroutine lscsq_ugridEXC 
- 
 !------------------------------------------------------------
 subroutine lscsq_mkdvp(n, delv, v)
   use iso_c_binding, only : fp => c_double

@@ -197,11 +197,15 @@ subroutine lscsq_plasma2d(r,z,psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
 !  integer, parameter :: OUT_OF_RANGE = -1
 
   integer :: iread = 0
+  !$OMP THREADPRIVATE(iread)
   integer :: isave = -1
+  !$OMP THREADPRIVATE(isave)
   integer :: jsave = -1
+  !$OMP THREADPRIVATE(jsave)
 
   real(fp) :: psderiv(0:2, 0:2), psimat(0:3, 0:3)
   real(fp), SAVE :: Rold, Zold, psiold, Brold, Bzold, omcold
+  !$OMP THREADPRIVATE(Rold, Zold, psiold, Brold, Bzold, omcold)
 
 !     ***************************************************************
 
@@ -259,6 +263,7 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
   real(fp), intent(out) :: ael  
   
   logical :: first_call = .true.
+  !$OMP THREADPRIVATE(first_call)
   integer, parameter :: recalc=-1
 
   integer :: jmin
@@ -267,6 +272,7 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
   real(fp) :: RBphipr, pe2pr, Teepr, pi2pr, Aiopr, Aelpr, psl 
 
   real(fp), save :: RBphio,pe2old,Teeold,pi2old,Aioold,Aelold
+  !$OMP THREADPRIVATE(RBphio,pe2old,Teeold,pi2old,Aioold,Aelold)
 
   real(fp) :: TeKevMin
   character(len=80) :: mes
@@ -307,7 +313,10 @@ subroutine lscsq_plasma1d (psi, psiold, RBphi,Tee,pe2,pi2,aio,ael)
 ! DMC bugfix -- handle pe2 minimum value not at bdy
 !   (prevent LSC from executing premature termination of ray following)
 
-  if((psl.lt.lh_inp%plflx(NpsiJ-1)).AND.(pe2.le.pe2min)) pe2min=pe2-1.0e-6_fp*abs(pe2)
+  if((psl.lt.lh_inp%plflx(NpsiJ-1)).AND.(pe2.le.pe2min)) then
+    !$OMP ATOMIC WRITE
+    pe2min=pe2-1.0e-6_fp*abs(pe2)
+  endif
 !----------------------------------------------------
 
   CALL lscsq_grnu1d(NpsiJ, lh_inp%plflx, lh_inp%Te, jmin, TeeCoefs, psl, Tee, Teepr)

@@ -1,15 +1,16 @@
-SUBROUTINE lscsq_RampPwr
+SUBROUTINE lscsq_RampPwr(spec_ini)
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : nrampup,nflat,npsi,ismo,FeCvgAry, nrays, nv, ntors, npols
+  use lscsq_mod, only : nrampup,nflat,npsi,ismo,FeCvgAry, nrays, npeaks,nv, ntors, npols,nant
   use lscsq_mod, only : iitr,nzones
   use lscsq_mod, only : pwrlevel
-  use lscsq_mod, only : fe, dql, dfdv
   use lscsq_mod, only : lh_out 
+  use pl_types
   implicit none
 
   integer :: iramp
   integer :: i1stcall=1
   integer :: iITRsave
+  type(ray_init), dimension(maxval(npeaks),nant), intent(in) :: spec_ini
 
   CALL lscsq_setpwrl(pwrlevel)
 
@@ -23,7 +24,7 @@ SUBROUTINE lscsq_RampPwr
 
   do iramp = 1, nrampup
      ! rescale power level
-     call lscsq_rspwr(pwrlevel(iramp))
+     call lscsq_rspwr(pwrlevel(iramp),spec_ini)
      call lscsq_RayDamp
      call lscsq_DqlGen
      iITR = mod(iITR,2) + 1
@@ -38,17 +39,12 @@ SUBROUTINE lscsq_RampPwr
   call lscsq_FeAt0
   iITR = iITRsave
 
-  lh_out%fe = fe
-  lh_out%dql = dql
-  lh_out%dfdv = dfdv
-
-
-
 end subroutine lscsq_rampPwr 
 !-----------------------------------------------------------------
 subroutine lscsq_FeConvrg(iramp)
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : fe, FeCvgAry, iitr, npsi, nv
+  use lscsq_mod, only : FeCvgAry, iitr, npsi, nv
+  use lscsq_mod, only : lh_out
   implicit none
 
   integer, intent(in) :: iramp
@@ -61,8 +57,8 @@ subroutine lscsq_FeConvrg(iramp)
   dum = 0.0_fp 
   do ip=1,npsi
      do iv=2,nv-1
-        dum=dum+abs(fe(iv,ip,inew)-fe(iv,ip,iold)) /              &
-                       (fe(iv,ip,inew)+fe(iv,ip,iold)+epsilon(1.0_fp))
+        dum=dum+abs(lh_out%fe(iv,ip,inew)-lh_out%fe(iv,ip,iold)) /              &
+                       (lh_out%fe(iv,ip,inew)+lh_out%fe(iv,ip,iold)+epsilon(1.0_fp))
      enddo
   enddo
 
@@ -70,29 +66,25 @@ subroutine lscsq_FeConvrg(iramp)
 
 end subroutine lscsq_FeConvrg
 !------------------------------------------------------------------
-subroutine lscsq_rspwr(pwrlev)
+subroutine lscsq_rspwr(pwrlev,spec_ini)
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : power, totpwr, spec, npols,nth,nrays, ind_ray,ok_ray
-  use lscsq_mod, only : nant, spec_ant, power_inp, ntors
+  use lscsq_mod, only : power, totpwr, npols, nant, npeaks, nth, nrays, ind_ray
+  use lscsq_mod, only : power_inp 
+  use pl_types
   implicit none
 
-  integer :: ir, itor, ipol, i1, i2, i
+  integer :: ir, ity, ipk, ian
   real(fp), intent(in) :: pwrlev
+  type(ray_init), dimension(maxval(npeaks),nant), intent(in) :: spec_ini
 
-!  power(1,1:nrays) = 0.0_fp
   ! initialize power on rays
-
-  do i=1,nant
-    Spec = Spec_ant(:,i)
-    totpwr = power_inp(i)
-    i1 = 1 + (i-1)*ntors*npols*nth
-    i2 = i*ntors*npols*nth
-    do ir=i1,i2  
-!     if (ok_ray(ir).eq.1) then
-        itor=ind_ray(1,ir) 
-        power(1,ir) = TotPwr*pwrlev*Spec(itor)/real(nth,kind=fp)/real(npols,kind=fp)
-!     endif
-    enddo
+  power(1,1:nrays) = 0.0_fp
+  do ir=1,nrays
+     ity = ind_ray(1,ir) 
+     ipk = ind_ray(3,ir) 
+     ian = ind_ray(5,ir) 
+     totpwr = power_inp(ian)
+     power(1,ir) = TotPwr*pwrlev*spec_ini(ipk,ian)%spec(ity)/real(nth(ian),kind=fp)/real(npols,kind=fp)
   enddo
 
 end subroutine lscsq_rspwr

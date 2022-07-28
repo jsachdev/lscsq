@@ -246,8 +246,6 @@ subroutine psi_map(xdum,zdum,psi0)
   use lscsq_mod, only: lh_inp, lh_coeff
   implicit none
 
-  ! local b field 
-  !============
   integer :: jd,idum,kd
   real(fp) :: dum,dx,dz,dx2,dz2
   real(fp), intent(in) :: xdum, zdum
@@ -264,7 +262,9 @@ subroutine psi_map(xdum,zdum,psi0)
   psi0 = lh_coeff%psi(jd,kd,1) + lh_coeff%psi(jd,kd,2)*dx + lh_coeff%psi(jd,kd,3)*dx2 &
        + lh_coeff%psi(jd,kd,4)*dz + lh_coeff%psi(jd,kd,5)*dx*dz + lh_coeff%psi(jd,kd,6)*dz*dx2     &
        + lh_coeff%psi(jd,kd,7)*dz2 + lh_coeff%psi(jd,kd,8)*dz2*dx + lh_coeff%psi(jd,kd,9)*dz2*dx2
-        
+  
+  psi0 =  max (lh_inp%plflx(1), psi0)      
+
 end subroutine psi_map 
 
 !-------------------------------------------------------------

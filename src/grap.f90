@@ -26,18 +26,25 @@ subroutine lscsq_grapLSC(xx, zz, psval, psderiv, isw, deex, deez, isave, jsave, 
       REAL(fp)                                                              &
            zz, xx, gradsq, dpsidx, dpsidz, psval, psixz,                &
            psixx, psizz, deez, deex,                         &
-           rival, rjval, cx, cy, psderiv
+           rival, rjval, cx, cy!, psderiv
 
   real(fp), dimension(4,4) :: vmat
 
       REAL(fp)                                                              &
-           fmat, poly, xpa, zpa, rhs1, rhs2, rhs3, rhs4, sum1,    &
+           !fmat, poly, xpa, zpa, 
+           rhs1, rhs2, rhs3, rhs4, sum1,    &
            sum2, sum3, sum4, sum5, sum6, xp, zp, ff, f1
       DATA frstcall / 1 /
-      DIMENSION fmat(0:3,0:*),poly(0:3,0:3)
-      DIMENSION xpa(0:3),zpa(0:3)
-      DIMENSION psderiv(0:2, 0:*)
-      DATA xpa(0),zpa(0)/ 1.0_fp, 1.0_fp/
+      ! DIMENSION fmat(0:3,0:*),poly(0:3,0:3)
+      ! DIMENSION xpa(0:3),zpa(0:3)
+      ! DIMENSION psderiv(0:2, 0:*)
+      ! DATA xpa(0),zpa(0)/ 1.0_fp, 1.0_fp/
+      Real(fp) :: fmat(0:3,0:3),poly(0:3,0:3)
+      Real(fp), intent(out) :: psderiv(0:2, 0:2)
+      Real(fp) :: xpa(0:3), zpa(0:3)
+
+      xpa(0) = 1.0_fp
+      zpa(0) = 1.0_fp
 
       rjval = (zz-lh_inp%zmin)/deez+1.0_fp
       rival = (xx-lh_inp%rmin )/deex+1.0_fp

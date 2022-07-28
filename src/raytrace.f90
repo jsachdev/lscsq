@@ -1,26 +1,35 @@
-subroutine lscsq_DoRay
+subroutine lscsq_DoRay(spec_ini)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : twopi, vc
-  use lscsq_mod, only : enpar, enpol, ntor, npol
-  use lscsq_mod, only : iray, izone, ierror, ok_ray, fghz
+  use lscsq_mod, only : npol, nth, nant, npeaks
+  use lscsq_mod, only : iray, izone, ierror, fghz
   use lscsq_mod, only: npols, ntors, nrays, Ezsq, ind_ray
-  use lscsq_mod, only: thgrid, thet0, enth, NparRy, nz_ind
-  use lscsq_mod, only: ezsq, ivind, izind, dlnPdsK, dlnPdsX, npar
+  use lscsq_mod, only: NparRy, Rant, Zant, Hant
+  use lscsq_mod, only: ezsq, dlnPdsK, dlnPdsX, npar
   use lscsq_mod, only: omega, woc2, woc4
+  use lscsq_mod, only: Rofray, Zofray
+  use lscsq_mod, only: nparry, nperry, bthray,bphray, detrry, &
+                       rtpsry, timery, distry
+  use lscsq_mod, only: lh_out
+  use pl_types
+#ifdef _OPENMP
+  USE OMP_LIB
+#endif
   implicit none
 
-  integer :: ity, ipy, ith, RayIniErr, iFillPsi, iErrCount
-  integer :: ind
+  integer :: ity, ipy, ipk, ith, ian, RayIniErr, iErrCount
+  integer :: i
+  type(ray_init), dimension(maxval(npeaks),nant), intent(in) :: spec_ini
 
   integer, dimension(:), allocatable :: ninac
   real(fp), dimension(:,:), allocatable :: accum
   real(fp), dimension(:,:), allocatable :: rayqt
+  real(fp) :: enpar, enpol 
+  real(fp) :: Zbot, rstart, zstart
 
   if(.not.allocated(ninac)) allocate(ninac(nrays))
   if(.not.allocated(accum)) allocate(accum(6,nrays))
   if(.not.allocated(rayqt)) allocate(rayqt(6,nrays))
-
-  iFillPsi =1
 
   iErrCount = 1
 
@@ -33,32 +42,49 @@ subroutine lscsq_DoRay
   ! initialize all arrays for ray tracing
   CALL lscsq_RyZnInit
 
-  do iray=1,nrays
+
+  !$OMP PARALLEL 
+  !$OMP MASTER
+#if DEBUG>=2 && _OPENMP
+  write(0,*) 'Number of OMP threads =', omp_get_num_threads()
+#endif
+  !$OMP END MASTER 
+
+  ! initialize launching position
+
+!$OMP DO PRIVATE(RayIniErr, ity, ipy, ipk, ith, ian,enpar, enpol, Zbot, rstart, zstart) REDUCTION(+:iErrCount) 
+do i=1,nrays
+     iray=i
      ity=ind_ray(1,iray)
      ipy=ind_ray(2,iray)
-     ith=ind_ray(3,iray)
-    
-     enpar = ntor(ity)
+     ipk=ind_ray(3,iray)
+     ith=ind_ray(4,iray)
+     ian=ind_ray(5,iray)
+     Zbot = Zant(ian)-0.5_fp*Hant(ian)
+     zstart = Zbot+0.5_fp*(2*ith-1)*Hant(ian)/nth(ian)
+     rstart = Rant(ian)
+!     enpar = ntor(ity)
+     enpar = spec_ini(ipk,ian)%ntor(ity)
      enpol = npol(ipy)
-     enth  = thgrid(ith)
      izone = 1
      omega=  1.0e09_fp * twopi*fghz(iray)
      woc2 = (omega/vc)**2
      woc4 =  woc2**2
-
-     CALL lscsq_RayIni(RayIniErr)
+     if (enpar.eq.0.0_fp) lh_out%ok_ray(iray)=0
+     if (enpar.ne.0.0_fp) call lscsq_RayIni(rstart,zstart,enpar,enpol,RayIniErr) 
      if (RayIniErr .GE. 1) then
-        ok_ray(iray) = 0
+        lh_out%ok_ray(iray) = 0
         iErrCount = iErrCount+1
         cycle   
      else
         call lscsq_predcLSC(ninac(iray),accum(:,iray),rayqt(:,iray))
      endif
   enddo
+  !$OMP END PARALLEL
 
   if (iErrCount .GE. nrays) then
      iError = 1
-     CALL lscsq_LSCtrace('RayIni')
+     write(*,*) ' LSCtrace called on exiting Rayini'
   endif
 
 end subroutine lscsq_doray
@@ -67,10 +93,10 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, deg2rad
-  use lscsq_mod, only : neqsp1, neqs, ierror, begin, lstop
-  use lscsq_mod, only : f1, f2, f3, f
-  use lscsq_mod, only : y1, y2, y3, y
-  use lscsq_mod, only : hstplh, nstep 
+  use lscsq_mod, only : neqsp1, neqs, ierror, lstop
+  use lscsq_mod, only :  f1, f2, f3, f
+  use lscsq_mod, only : y!1, y2, y3, y
+  use lscsq_mod, only : hstplh, nstep, iray
   implicit none
 
 !!!!!!     EXTERNAL RungeLSC, ftion, prtout
@@ -78,7 +104,7 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
 !     integration when some condition is met.
 !     Lstop    is meant for serious conditions
 !              such as going out of bounds.
-!     The include statements are to catch: begin,h,nstep,lstop,
+!     The include statements are to catch: h,nstep,lstop,
 !     and especially NEQS and NEQSP1
 
   integer :: i,j, jstart, BoundsEr 
@@ -87,23 +113,29 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
   real(fp), dimension(6), intent(inout) :: accum1, rayqt1
   integer, intent(inout) :: ninac1
   real(fp):: yok(NEQSP1), thi, tho
-  Real(fp):: pc(NEQS), c(NEQS),p(NEQS),dumy(NEQS)
-  Real(fp) :: k1 = 2.65277776_fp 
-  Real(fp) :: k2 = -1.4861111_fp 
-  Real(fp) :: k3 = 1.5138888_fp
-  Real(fp) :: k4 = -0.34722222_fp
-  Real(fp) :: k5 = 0.94266666_fp
-  Real(fp) :: k6 = 0.34722222_fp
-  Real(fp) :: k7 = 1.2638888_fp
-  Real(fp) :: k8 = 0.59722222_fp
-  Real(fp) :: k9 = 0.125_fp
-  Real(fp) :: k10= 0.05733333_fp
+  real(fp):: yOld(NEQS) 
 
+  Real(fp) :: k1 = 55.0_fp / 24.0_fp
+  Real(fp) :: k2 = -59.0_fp / 24.0_fp
+  Real(fp) :: k3 = 37.0_fp / 24.0_fp
+  Real(fp) :: k4 = -9.0_fp / 24.0_fp
+
+  !5th degree corrector
+
+  ! Real(fp) :: k6 = 251.0_fp / 720.0_fp
+  ! Real(fp) :: k7 = 646.0_fp / 720.0_fp
+  ! Real(fp) :: k8 = -264.0_fp / 720.0_fp
+  ! Real(fp) :: k9 = 106.0_fp / 720.0_fp
+  ! Real(fp) :: k10 = -19.0_fp / 720.0_fp
+
+  !4th degree corrector
+  Real(fp) :: k6 = 9.0_fp / 24.0_fp
+  Real(fp) :: k7 = 19.0_fp / 24.0_fp
+  Real(fp) :: k8 = -5.0_fp / 24.0_fp
+  Real(fp) :: k9 = 1.0_fp / 24.0_fp
 
   jstart = 4
  10   continue
-
-  pc(1:neqs) = 0.0_fp
 
   BoundsEr = 0
   lstop = 0
@@ -115,7 +147,6 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
 
   yok(1:neqsp1) = y(1:neqsp1)
 
-
   do j = jstart, nstep
      yok(1:neqsp1) = y(1:neqsp1)
      if (iError.GE.1) return
@@ -123,27 +154,20 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
         call lscsq_E2byPr(ninac1,accum1,rayqt1)
         return
      endif
-     y(NEQSP1) = begin+REAL(j,kind=fp)*HstpLH
+     y(NEQSP1) = real(j,kind=fp)*HstpLH
+     !calculate predicion y
      do i=1,NEQS
-        dumy(i) = (y3(i)+y3(i)+y2(i))/3.0_fp
-        p(i)=dumy(i)+HstpLH*(k1*f(i)+k2*f3(i)+k3*f2(i)+k4*f1(i))
-        y1(i)=y2(i)
-        y2(i)=y3(i)
-        y3(i)=y(i)
-        ! modify
-        y(i)=p(i)-k5*pc(i)
+        yOld(i)=y(i)
+        y(i) =  y(i)+HstpLH*(k1*f(i)+k2*f3(i)+k3*f2(i)+k4*f1(i))
         f1(i) = f2(i)
         f2(i) = f3(i)
         f3(i) = f(i)
      enddo
      CALL lscsq_ftion(BoundsEr)
      if(BoundsEr .ne. 0) go to 100
+     !calculate correction y using new f(y predicion)
      do i = 1,NEQS
-        ! correct
-        c(i)= dumy(i)+HstpLH*(k6*f(i)+k7*f3(i)+k8*f2(i)+k9*f1(i))
-        pc(i) = p(i)-c(i)
-        ! final
-        y(i) = c(i)+k10*pc(i)
+        y(i) = yOld(i)+HstpLH*(k6*f(i)+k7*f3(i)+k8*f2(i)+k9*f1(i))
      enddo
 
      call lscsq_E2byPr(ninac1,accum1,rayqt1) ! increment the zone counter
@@ -167,9 +191,9 @@ subroutine lscsq_PredcLSC(ninac1,accum1,rayqt1)
 
   iBndsErr = iBndsErr + 1
   if (iBndsErr .GE. nBndsErr) then
-     iBndsErr = 0
+        iBndsErr = 0
 #if DEBUG==2
-     write(*,'('' Rays out of bounds; recovered'',i4,'' times'')') nBndsErr
+        write(*,'('' Rays out of bounds; recovered'',i4,'' times'')') nBndsErr
 #endif
   endif
   goto 10
@@ -183,7 +207,7 @@ SUBROUTINE lscsq_RungeLSC(ninac1,accum1,rayqt1,BoundsEr)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : neqsp1, neqs, hstplh
   use lscsq_mod, only : f1, f2, f3, f
-  use lscsq_mod, only : y1, y2, y3, y
+  use lscsq_mod, only : y!1, y2, y3, y
   
   implicit none
 
@@ -191,41 +215,47 @@ SUBROUTINE lscsq_RungeLSC(ninac1,accum1,rayqt1,BoundsEr)
   integer :: BoundsEr
   real(fp), dimension(6), intent(inout) :: accum1, rayqt1
   integer, intent(inout) :: ninac1
-  real(fp), dimension(4) :: a = [0.5_fp, 0.29289322_fp, 1.70710675_fp, 0.1666667_fp]
-  real(fp), dimension(4) :: b = [2.0_fp, 1.0_fp       , 1.0_fp       , 2.0_fp] 
-  real(fp), dimension(4) :: c = [0.5_fp, 0.29289322_fp, 1.70710675_fp, 0.5_fp]
-  real(fp):: q(NEQSP1)
-  real(fp):: dum
+  real(fp):: dum(NEQS), yOld(NEQS) 
 
   f(NEQSP1) = 1.0_fp
-  q(NEQSP1) = 0.0_fp
   CALL lscsq_ftion(BoundsEr)
   if(BoundsEr .ne. 0) go to 100
-  y1(1:neqs) = y(1:neqs)
   f1(1:neqs) = f(1:neqs)
-  q(1:neqs) = 0.0_fp
+  yOld(1:NEQS) = y(1:NEQS)
 
-  do ia=2,4
-     do ib=1,4
-        call lscsq_ftion(BoundsEr)
-        if(BoundsEr .ne. 0) go to 100
-        do ic=1,NEQSP1
-           dum = a(ib)*(f(ic)-b(ib)*q(ic))
-           y(ic) = y(ic) + HstpLH*dum
-           q(ic) = q(ic) + 3.0_fp*dum-c(ib)*f(ic)
-        enddo
-     enddo
-     k = ia-1
+
+  do ia=1,3
+    do ic=1,NEQS
+      dum(ic)=y(ic)+HstpLH * f(ic)/6.0_fp
+      y(ic) = yOld(ic) + HstpLH * f(ic)/2.0_fp
+    enddo
+    call lscsq_ftion(BoundsEr)
+    do ic=1,NEQS
+      dum(ic)=dum(ic)+HstpLH * f(ic)/3.0_fp
+      y(ic) = yOld(ic) + HstpLH * f(ic)/2.0_fp
+    enddo
+    call lscsq_ftion(BoundsEr)
+    do ic=1,NEQS
+      dum(ic)=dum(ic)+HstpLH * f(ic)/3.0_fp
+      y(ic) = yOld(ic) + HstpLH * f(ic)
+    enddo
+    call lscsq_ftion(BoundsEr)
+    do ic=1,NEQS
+      y(ic)=dum(ic)+HstpLH * f(ic)/6.0_fp
+      yOld(ic) = y(ic)
+    enddo
+    call lscsq_ftion(BoundsEr)
+    if(BoundsEr .ne. 0) go to 100
+    y(NEQSP1) = y(NEQSP1)+HstpLH
+    
      call lscsq_E2byPr(ninac1,accum1,rayqt1)
-     if (k.eq.1) then
+     if (ia.eq.1) then
         f2(1:neqs) = f(1:neqs)
-        y2(1:neqs) = y(1:neqs)
-     endif
-     if (k.eq.2) then
+     else if (ia.eq.2) then
         f3(1:neqs) = f(1:neqs)
-        y3(1:neqs) = y(1:neqs)
+     else 
+      return
      endif
-     if (k.eq.3) cycle
   enddo
 
   return
@@ -365,9 +395,7 @@ END
 !     PredcLSC ends                         ---------------------------|
 !
 !     eps -- dielectric tensor              ---------------------------|
-!                                                                      |
-!                                                                      |
-SUBROUTINE lscsq_eps ( r, z, kpar2, kper2 )
+SUBROUTINE lscsq_eps(kper2, omc, pe2, pi2, tee, aio, ael)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : D11er, D33er, D12er
@@ -376,51 +404,44 @@ SUBROUTINE lscsq_eps ( r, z, kpar2, kper2 )
   use lscsq_mod, only : ecyc , ecyc2, epsq , ipsq, fghz, iray
   implicit none
 
-  real(fp) :: r,z,kpar2,kper2, veow2,elam,elamc,emli0,emli1, &
-              exy0,lscsq_bsi0,lscsq_bsi1, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael
+  real(fp), intent(in) :: omc, pe2, pi2, tee, aio, ael
+  real(fp), intent(in) :: kper2
 
-  real(fp) :: large=1.0e30_fp
+  real(fp) :: veow2,elam,elamc,emli0,emli1, &
+              exy0,lscsq_bsi0,lscsq_bsi1 
+
   real(fp) :: Te2Ve=0.0445e-4_fp
       
-  call lscsq_plasma2d (r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
-  If (psi.GE.large) return
-      ecyc  = omc/fghz(iray)
-      ecyc2 = ecyc*ecyc
-      epsq  = pe2/fghz(iray)**2
-      ipsq  = pi2/fghz(iray)**2
-      veow2 = Te2Ve*tee/fghz(iray)**2
-      elamc = veow2/ecyc2
-      elam  = elamc*Kper2
-!     This is the electron Lambda - - (Kper RhoE)^2
-!     Now form the quantities exp(-elam) I0,1 (elam)
-      emli0= lscsq_bsi0(elam)
-      emli1= lscsq_bsi1(elam)
-      epar = 1.0_fp - epsq
-      aion = aio/fghz(iray)**4
-      aelc = ael
-      eper = 1.0_fp+epsq/ecyc2-ipsq
-      eper = eper-kper2*(aion+aelc)
-      exy0 = epsq/ecyc
-      exy  = exy0
-!      return
+  ecyc  = omc/fghz(iray)
+  ecyc2 = ecyc*ecyc
+  epsq  = pe2/fghz(iray)**2
+  ipsq  = pi2/fghz(iray)**2
+  veow2 = Te2Ve*tee/fghz(iray)**2
+  elamc = veow2/ecyc2
+  elam  = elamc*Kper2
+  !     This is the electron Lambda - - (Kper RhoE)^2
+  !     Now form the quantities exp(-elam) I0,1 (elam)
+  emli0= lscsq_bsi0(elam)
+  emli1= lscsq_bsi1(elam)
+  epar = 1.0_fp - epsq           ! this is the P term (eq.10)
+  aion = aio/fghz(iray)**4       ! ion contribution to alpha
+  aelc = ael                     ! electron contribution to alpha
+  eper = 1.0_fp+epsq/ecyc2-ipsq  ! this is the S term (eq.8)
+  eper = eper-kper2*(aion+aelc)  ! this is S-alpha*kper^2, i.e. Kxx and Kyy tensor terms (eq.5)
+  exy0 = epsq/ecyc
+  exy  = exy0
 
-!      ENTRY lscsq_epsdr(r, z, Kpar2, Kper2)
-!     derivatives of the dielectric tensor elements
-!     by (k-perp)**2 ; (k-par)**2 ; (omega)**2
-!     this last is multiplied by (omega**2)
+  d11er = -(aion + aelc)
+  d11ar = 0.0_fp
+  d11w0 = ipsq+2.0_fp*aion*kper2
 
-      d11er = -(aion + aelc)
-      d11ar = 0.0_fp
-      d11w0 = ipsq+2.0_fp*aion*kper2
+  d12er = 0.0_fp
+  d12ar = 0.0_fp
+  d12w0 = -0.5_fp*exy
 
-      d12er = 0.0_fp
-      d12ar = 0.0_fp
-      d12w0 = -0.5_fp*exy
-
-      d33er = 0.0_fp
-      d33ar = 0.0_fp
-      d33w0 = epsq
-!      return
+  d33er = 0.0_fp
+  d33ar = 0.0_fp
+  d33w0 = epsq
 
 end subroutine lscsq_eps
 
@@ -487,8 +508,7 @@ subroutine lscsq_ftion(BoundsEr)
   KdB = Y(4)*Br + Y(5)*Bz + Y(6)/r**2 *RBphi
   Kpar2 = KdB**2/Btot2
   Kper2 = KdK - Kpar2
-  CALL lscsq_eps(r,z,Kpar2,Kper2)
-!  CALL lscsq_epsdr ( r, z, Kpar2, Kper2 )
+  CALL lscsq_eps(kper2, omc, pe2, pi2, tee, aio, ael)
   bkb(1) = Br*KdB/Btot2
   bkb(2) = Bz*KdB/Btot2
   bkb(3) = rBphi*KdB/Btot2 /r**2 
@@ -570,7 +590,7 @@ subroutine lscsq_WhchRoot (r, z, Kr, Kz, Kphi, NperFs, NperSl)
    Kpar2 = ( Kr*Br + Kz*Bz + Kphi*rBphi/r/r )**2/Btot2
    Kper2 = KdK - Kpar2
 
-   CALL lscsq_eps (r, z, Kpar2, Kper2)
+   CALL lscsq_eps(kper2, omc, pe2, pi2, tee, aio, ael)
    Qpar = Kpar2 - woc2*Eper
    AAD1 = Eper
    BBD2 = ( (Epar+Eper)*Qpar + woc2*Exy**2 )/woc2
@@ -611,7 +631,7 @@ FUNCTION lscsq_DispRela (r, z, Kr, Kz, Kphi)
   Kpar2 = ( Kr*Br + Kz*Bz + Kphi*rBphi/r/r )**2/Btot2
   Kper2 = KdK - Kpar2
 
-  CALL lscsq_eps ( r, z, Kpar2, Kper2 )
+  CALL lscsq_eps (kper2, omc, pe2, pi2, tee, aio, ael) 
   Qpar = Kpar2 - woc2*Eper
   D1 = Kper2**2*Eper
   D2 = Kper2*( (Epar+Eper)*Qpar + woc2*Exy**2 )

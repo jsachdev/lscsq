@@ -1,37 +1,32 @@
 &inpsize
 nant = 1,
-nGrps = 2,    ! num of spectrum peaks: num of waveguides if DOBRAM>0 (3) 
-ntors=60,
 npols=1,
 npsi = 30, ! numr of psi shells for power/current dep (10)
 nzones = 1000, ! 4000 number of shell crossings tracked (100) 
 nv = 201,  ! number of v_el/c bins points btw -1 and +1 (199) 
-nth=1,
 nrampup= 11, ! number of steps to ramp up power  
 /
 
 &inpvalue 
+Rant(1) = 1.05,
+Zant(1) = -0.2,
+Hant(1) = 0.50,
 power_inp(1) = 1.0e+06,
 fghz_ant(1) = 4.6, 
-npeaks(1) = 2, 
+nth(1) = 4,
+npeaks(1) = 2,
+ntors(1,1)=5, ntors(2,1)=50, 
 powers_ant(1,1) = 0.04, powers_ant(2,1) = 0.96,
 centers_ant(1,1)= -8.00, centers_ant(2,1)= 2.70, 
 widths_ant(1,1) = 0.40, widths_ant(2,1) = 0.40,
-powers(1) = 0.04, powers(2) = 0.96,
-centers(1)= -8.00, centers(2)= 2.70, 
-widths(1) = 0.4, widths(2) = 0.4,
-nparmin  = -9.00,  ! left edge of n_parallel peak   
-nparmax  = 3.50,   ! right edge of n_parallel peak  
 /
   
 &inpexprt
 HstpLH = .008,   ! step length in m along pathlength (0.005 for PBXM) 
-nstep = 200000,  ! max steps in following each ray (500) 
+nstep = 20000,  ! max steps in following each ray (500) 
 nsmoo = 9, ! num vel bins for smoothing D_ql (9)  
 nsmw = 3,  ! characteristic width of fun covering NSMOO vs bins (3)
-weghtitr = 0.100 ! .2,
-thet0=189.0,
-dthet=13.0,
+weghtitr = 0.200, 
 nflat  = 2,   ! number of points with flat max power
 /
 
