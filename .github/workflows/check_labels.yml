@@ -1,11 +1,11 @@
-name: Check labels
+name: Check Version Labels
 
 on:
   pull_request:
     types: [opened, labeled, unlabeled, synchronize]
 
 jobs:
-  check_labels:
+  check_version_labels:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
