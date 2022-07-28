@@ -13,13 +13,7 @@ jobs:
   check_labels:
     needs: [check_empty]
     runs-on: ubuntu-latest
-    uses: actions/checkout@v2
     steps:
+      - uses: actions/checkout@v2
       - name: Check major minor patch
-        run: !(contains(github.event.issue.labels.*.name, 'major') && contains(github.event.issue.labels.*.name, 'minor') && contains(github.event.issue.labels.*.name, 'patch'))
-      - name: Check major minor
-        run: !(contains(github.event.issue.labels.*.name, 'major') && contains(github.event.issue.labels.*.name, 'minor'))
-      - name: Check major patch
-        run: !(contains(github.event.issue.labels.*.name, 'minor') && contains(github.event.issue.labels.*.name, 'patch'))
-      - name: Check minor patch
-        run: !(contains(github.event.issue.labels.*.name, 'minor') && contains(github.event.issue.labels.*.name, 'patch'))
+        run: echo Hello
