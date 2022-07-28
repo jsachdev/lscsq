@@ -53,14 +53,15 @@
 !
 !     Code is written with the presumtion of E positive and mu minus
 !     for positive velocity and mu plus for negative velocity.  If
-!     E is negative, the quantitiy muminus becomes +1; muplus becomes -1
+!     E is negative, the quantity muminus becomes +1; muplus becomes -1
 !
 !     ------------------------------------------------------------------
 !
 subroutine lscsq_VmaxCalc
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only : ivind,izind,Vparmaxn,Vparmaxp, vpar, npsi
-  use lscsq_mod, only : nzones, nrays, ok_ray
+  use lscsq_mod, only : Vparmaxn,Vparmaxp, npsi
+  use lscsq_mod, only : nzones, nrays
+  use lscsq_mod, only : lh_out
   implicit none
 
   integer :: ip,ir,iz,iv
@@ -70,12 +71,12 @@ subroutine lscsq_VmaxCalc
   VparMaxP(1:npsi)= +0.05_fp
  
   do ir=1,nrays
-     if (ok_ray(ir).eq.1) then
+     if (lh_out%ok_ray(ir).eq.1) then
         do iz=1,nzones
-           iv = ivind(iz,ir)
-           ip = izind(iz,ir)
+           iv = lh_out%ivind(iz,ir)
+           ip = lh_out%izind(iz,ir)
            if (iv .EQ. 0 .or. ip .EQ. 0) exit
-           vl = vpar(iv)
+           vl = lh_out%vpar(iv)
            if(VparMaxP(ip) .LT. vl) VparMaxP(ip) = vl
            if(VparMaxN(ip) .GT. vl) VparMaxN(ip) = vl
         enddo     
@@ -179,7 +180,7 @@ subroutine lscsq_jnorm(ip)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, vc, qe_eV, me_g
   use lscsq_mod, only: vnorm,muplus,muminus,gmrun,ugr,ugr
-  use lscsq_mod, only: Edcary, ivrun, vpar, vnmax, nuruna, nv
+  use lscsq_mod, only: Edcary, ivrun, vnmax, nuruna, nv
   use lscsq_mod, only: lh_out
   implicit none
 
@@ -204,7 +205,7 @@ subroutine lscsq_jnorm(ip)
      muminus = -1.0_fp
   endif
   nuRuna = gmrun/vnorm**3
-  ugr(1:nv) = Vpar(1:nv)/vnorm *muminus
+  ugr(1:nv) = lh_out%vpar(1:nv)/vnorm *muminus
  
   ivrun = 0
   if (muminus .EQ. -1.0_fp) then
@@ -230,8 +231,8 @@ end subroutine lscsq_jnorm
 subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, qe_eV, vc
-  use lscsq_mod, only: Dql,vpar,dfdv,muplus,jray,vpar,dvplus
-  use lscsq_mod, only: ismo,fe,ivzero,ugr,vtherm,muminus
+  use lscsq_mod, only: muplus,jray,dvplus
+  use lscsq_mod, only: ismo,ivzero,ugr,vtherm,muminus
   use lscsq_mod, only: ivlary, iitr, nuruna, nv
   use lscsq_mod, only: lh_inp, lh_out
   implicit none
@@ -253,7 +254,7 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   constfac = 1.0e6_fp*qe_eV*vc/nuruna   
   iGotRuna = 0
   iSMOi = mod(iSMO,2) + 1
-  FeCutOff = FeCutFac*fe(IvZero,ip,iITR)
+  FeCutOff = FeCutFac*lh_out%fe(IvZero,ip,iITR)
   eps = sqrt(iVlary(ip)/(2.0_fp*PI**2*lh_inp%Raxis))/lh_inp%Raxis
   eps_p = eps**0.77_fp  ! calculate this only once
   xr = 3.5_fp    ! fmp - what is this?
@@ -261,7 +262,7 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
   ! first negative velocities
   do iv = 1, IvZero - 1
      ! Ignore jd where f_e is small
-     if (fe(iv,ip,iITR).ge.FeCutOff ) then
+     if (lh_out%fe(iv,ip,iITR).ge.FeCutOff ) then
         ! Muplus, because mu is plus for negative velocity if the Edc is >0
         ! See above for reversal if E<0
         CALL lscsq_WsloPrm(ugr(iv), muplus, lh_out%zbar(ip), dWsduou, iWhichWay)
@@ -269,10 +270,10 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
         ! Note that dWsdu*ugr is always positive
         if (iWhichWay.ne.0) iGotRuna = iGotRuna+1
         ! trapping effect from Ehst-Karney for LH limit of large vpar/vth
-        w = abs(Vpar(iv))/Vtherm(ip)
+        w = abs(lh_out%vpar(iv))/Vtherm(ip)
         TrapFac = 1.0_fp-((eps_p*sqrt(xr**2+w**2))/(eps_p*xr+w))
         ! For negative velocity the current driven is negative because df/dv >0
-        jdtemp = -Dql(iv,ip,iSMO)*dfdv(iv,ip,iSMOi)*TrapFac*dvplus(iv)*dWsdu*constfac
+        jdtemp = -lh_out%Dql(iv,ip,iSMO)*lh_out%dfdv(iv,ip,iSMOi)*TrapFac*dvplus(iv)*dWsdu*constfac
         jd = jd+jdtemp
         if(iFillJray.EQ.1) Jray(iv,ip) = jdtemp
 !       if(iFillJray.EQ.1) Jray(iv,ip) = jd
@@ -284,16 +285,16 @@ subroutine lscsq_mkj(ip, jd, iGotRuna, iFillJray)
      ! Ignore jd where f_e is small
      ! Muminus, because mu is neg for positive veloctiy if the Edc is >0
      ! See above for reversal if E<0
-     if (fe(iv,ip,iITR).GE.FeCutOff) then
+     if (lh_out%fe(iv,ip,iITR).GE.FeCutOff) then
         CALL lscsq_WsloPrm(ugr(iv), muminus, lh_out%zbar(ip), dWsduou, iWhichWay)
         dWsdu = dWsduou  * ugr(iv)
         ! Note that dWsdu*ugr is always positive
         if (iWhichWay.ne.0) iGotRuna = iGotRuna+1
         ! trapping effect from Ehst-Karney for LH limit of large vpar/vth
-        w = abs(Vpar(iv))/Vtherm(ip)
+        w = abs(lh_out%vpar(iv))/Vtherm(ip)
         TrapFac = 1.0_fp-((eps_p*sqrt(xr**2+w**2))/(eps_p*xr+w))
         ! For positive velocity the current driven is positive because df/dv<0
-        jdtemp = -Dql(iv,ip,iSMO)*dfdv(iv,ip,iSMOi)*TrapFac*dvplus(iv)*dWsdu*constfac
+        jdtemp = -lh_out%Dql(iv,ip,iSMO)*lh_out%dfdv(iv,ip,iSMOi)*TrapFac*dvplus(iv)*dWsdu*constfac
         jd = jd + jdtemp
          if(iFillJray .EQ. 1) Jray(iv,ip) = jdtemp
 !       if(iFillJray .EQ. 1) Jray(iv,ip) = jd
@@ -308,22 +309,21 @@ subroutine lscsq_GetEdc (DifAmt)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi
   use lscsq_mod, only: lh_inp, lh_out
-  use lscsq_mod, only: Edcary, Edcvec, npsij, npsi
+  use lscsq_mod, only: Edcary, npsij, npsi
   implicit none
 
   real(fp), intent(in) :: DifAmt
   integer :: j
-  real(fp):: psi, Edc
+  real(fp):: Edc
   real(fp) :: MinEdc = 1.0e-4_fp
   ! DifAmt is intended to be 0.0 when the E_dc is desired as given
   ! and intended to be something like 0.0001 when we are trying to form
   ! the derivative   d ln J / d ln E
 
-  Edc = 0.0_fp
   do j = 1, npsi
-     psi = lh_out%Psi(j)
-     CALL lscsq_linr1d(NpsiJ, lh_inp%plflx, EdcVec, psi, Edc)
-     Edc = Edc + DifAmt
+     ! cannot use the map1d subroutine here because the DC electric field can
+     ! have large gradients locally. This will be revised as the code is upgraded
+     Edc = lh_out%Edc(j) + DifAmt
      if (abs(Edc) .LE. MinEdc) then
         if (Edc .GE. 0.0_fp ) then
            Edc = +MinEdc
@@ -341,7 +341,8 @@ subroutine lscsq_ddtNrnJrn (ip,nDot, jDot, vRunAwayIndex)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : qe_eV, vc
-  use lscsq_mod, only: dql, ivrun, ismo, dfdv, vpar, nv
+  use lscsq_mod, only: ivrun, ismo, nv
+  use lscsq_mod, only: lh_out
   implicit none
 
   ! Added Aug 93 to help quantify the runaway situation for LSC report PPPL 2929
@@ -355,8 +356,8 @@ subroutine lscsq_ddtNrnJrn (ip,nDot, jDot, vRunAwayIndex)
   JDot= 0.0_fp
   vRunAwayIndex= 0.0_fp
   if (ivrun .GT. 1 .and. ivrun .LT. nv ) then
-     nDot =             Dql(ivrun, ip, iSMO) * dfdv(ivrun,ip,iSMOi)
-     jDot = vpar(ivrun)*Dql(ivrun, ip, iSMO) * dfdv(ivrun,ip,iSMOi)
+     nDot = lh_out%Dql(ivrun,ip,iSMO) * lh_out%dfdv(ivrun,ip,iSMOi)
+     jDot = lh_out%vpar(ivrun)*lh_out%Dql(ivrun,ip,iSMO) * lh_out%dfdv(ivrun,ip,iSMOi)
  
      nDot = abs ( nDot )
      jDot = abs(JDot)* 1.0e6_fp*qe_eV *vc

@@ -3,26 +3,27 @@ SUBROUTINE lscsq_FeCalc
 ! diffusion coefficient and plamsa profiles from psi index ipsiL to ipsiU
 
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi,nv,ivzero,vpar,dql, iitr
-  use lscsq_mod, only: nucoll, dcoll, fenorm, wkv, fe
+  use lscsq_mod, only: npsi,nv,ivzero, iitr
+  use lscsq_mod, only: nucoll, dcoll, fenorm, wkv
+  use lscsq_mod, only: lh_out
   implicit none
 
   integer :: ip
   real(fp), dimension(nv) :: fe_tmp 
 
   ! set to zero to start
-  fe(1:nv,1:npsi,iitr) = 0.0_fp
+  lh_out%fe(1:nv,1:npsi,iitr) = 0.0_fp
 
   ! copy normalization into fe(v = vpar(ivZero), psi)
   ! fmp - I think there is a problem here. The values of Fe at v=0 are huge in
   ! the output. 
-  fe(ivzero,1:npsi,iitr) = Fenorm(1:npsi)
+  lh_out%fe(ivzero,1:npsi,iitr) = Fenorm(1:npsi)
 
   do ip = 1, npsi
      ! solve for positive velocity
-     CALL lscsq_FePlus(fe(1:nv,ip,iitr), nuColl(1:nv, ip), Dcoll(1:nv,ip), Dql(1:nv,ip,2), Vpar, ivZero)
+     CALL lscsq_FePlus(lh_out%fe(1:nv,ip,iitr), nuColl(1:nv, ip), Dcoll(1:nv,ip), lh_out%Dql(1:nv,ip,2), lh_out%Vpar, ivZero)
      ! solve for negative velocity
-     CALL lscsq_FeMinus(fe(1:nv,ip,iitr), nuColl(1:nv,ip), Dcoll(1:nv,ip), Dql(1:nv,ip,2), Vpar, ivZero)
+     CALL lscsq_FeMinus(lh_out%fe(1:nv,ip,iitr), nuColl(1:nv,ip), Dcoll(1:nv,ip), lh_out%Dql(1:nv,ip,2), lh_out%Vpar, ivZero)
   enddo
 
 end subroutine lscsq_FeCalc
@@ -131,7 +132,8 @@ end subroutine lscsq_FeMinus
 !     -----------------------------------------------------------------
 subroutine lscsq_FeWeight
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi, nv, weghtitr, fe, iitr
+  use lscsq_mod, only: npsi, nv, weghtitr, iitr
+  use lscsq_mod, only: lh_out
   implicit none
 
   INTEGER iv,ip,new,old
@@ -142,7 +144,7 @@ subroutine lscsq_FeWeight
   old = mod(iITR,2)+1
   do iv = 1, nv
      do ip = 1, npsi
-        fe(iv,ip,new) = fe(iv,ip,new)*WeghtItr + fe(iv,ip,old)*CtrWeght
+        lh_out%fe(iv,ip,new) = lh_out%fe(iv,ip,new)*WeghtItr + lh_out%fe(iv,ip,old)*CtrWeght
      enddo
   enddo
 
@@ -165,7 +167,7 @@ SUBROUTINE lscsq_FeCvecs
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only: tailteps, tailneps, tailpeps, tailvtrn
   use lscsq_mod, only: nu0psi, nucoll, dcoll, vtherm
-  use lscsq_mod, only: npsi, nv, vpar
+  use lscsq_mod, only: npsi, nv 
   use lscsq_mod, only: lh_const, lh_out
   implicit none
 
@@ -189,7 +191,7 @@ SUBROUTINE lscsq_FeCvecs
      vth5 = vth3 * vthsq
      nu0psi(ip) = lh_out%Ne(ip)/vth3
      do iv = 1, nv
-        v12 = vpar(iv)
+        v12 = lh_out%vpar(iv)
         vpnorm = (v12 / vtherm(ip))
         harg = 1.0_fp + vpnorm**2
         hvpar = 1.0_fp/(harg*sqrt(harg))
@@ -197,7 +199,7 @@ SUBROUTINE lscsq_FeCvecs
         Dcoll(iv, ip) = lh_const%DcollNorm * nu0psi(ip) * vthsq * hvpar * lh_out%logL(ip) * lh_out%BetZ(ip)
         nuColl(iv, ip) = lh_const%nuNorm * nu0psi(ip) * hvpar * v12 * lh_out%logL(ip) * lh_out%BetZ(ip)
  
-        if ( TailPeps .GT. 0.0_fp .and. abs(vpar(iv)) .GT. TransVel) then
+        if ( TailPeps .GT. 0.0_fp .and. abs(lh_out%vpar(iv)) .GT. TransVel) then
            Dcoll (iv,ip) = Dcoll(iv,ip) * TailT12
            nuColl(iv,ip) = nuColl(iv,ip)* TailT32
         endif
@@ -224,7 +226,7 @@ end subroutine lscsq_mkVth
 subroutine lscsq_FeAt0
   ! value of fe at t = 0.
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi,fe
+  use lscsq_mod, only: npsi
   implicit none
 
   integer :: i
@@ -242,7 +244,8 @@ subroutine lscsq_FeMaxw(iipsi)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi
   use lscsq_mod, only: tailteps, tailneps, nv
-  use lscsq_mod, only: vtherm, vperpsq, vpar, fenorm, fe, iitr, ivzero
+  use lscsq_mod, only: vtherm, vperpsq, fenorm, iitr, ivzero
+  use lscsq_mod, only: lh_out
   implicit none
 
   integer, intent(in) :: iipsi
@@ -289,72 +292,73 @@ subroutine lscsq_FeMaxw(iipsi)
  
   if (FactorM1 .EQ. 0.0_fp) then
      do iv = 3, nv-2
-        argument = VthsInv*vpar(iv)**2
+        argument = VthsInv*lh_out%vpar(iv)**2
         if (argument .LT. TOOBIG) then
-          fe(iv,iipsi,iITR) = FeNorm(iipsi)*exp(-argument)
+          lh_out%fe(iv,iipsi,iITR) = FeNorm(iipsi)*exp(-argument)
         else
-          fe(iv,iipsi,iITR) = 0.0_fp
+          lh_out%fe(iv,iipsi,iITR) = 0.0_fp
         endif
      enddo
  
-     fe(1   ,iipsi,iITR) = 0.0_fp 
-     fe(2   ,iipsi,iITR) = 0.0_fp
-     fe(nv-1,iipsi,iITR) = 0.0_fp 
-     fe(nv  ,iipsi,iITR) = 0.0_fp
+     lh_out%fe(1   ,iipsi,iITR) = 0.0_fp 
+     lh_out%fe(2   ,iipsi,iITR) = 0.0_fp
+     lh_out%fe(nv-1,iipsi,iITR) = 0.0_fp 
+     lh_out%fe(nv  ,iipsi,iITR) = 0.0_fp
   endif
  
   if (FactorM1 .ne. 0.0_fp ) then
      RsltMin = exp ( - REXPMIN )
      TransVel = vtherm(iipsi)*sqrt(2.0_fp*(-log(TailNeps)-0.5_fp*log(TailTeps))/(1.0_fp-TailTeps))
       
-     fe(ivZero,iipsi,iITR) = 0.0_fp
+     lh_out%fe(ivZero,iipsi,iITR) = 0.0_fp
      LoVfac = VthSInv
      HiVfac = LoVfac*TailTeps
      do  iv = ivZero - 1, 3, - 1
-        if(abs(vpar(iv)) .LT. TransVel) then
-          HiVterm = vpar(iv)*LoVfac
+        if(abs(lh_out%vpar(iv)) .LT. TransVel) then
+          HiVterm = lh_out%vpar(iv)*LoVfac
         else
-          HiVterm = vpar(iv)*HiVfac
+          HiVterm = lh_out%vpar(iv)*HiVfac
         endif
-        if(abs(vpar(iv+1)) .LT. TransVel) then
-          LoVterm = vpar(iv+1)*LoVfac
+        if(abs(lh_out%vpar(iv+1)) .LT. TransVel) then
+          LoVterm = lh_out%vpar(iv+1)*LoVfac
         else
-          LoVterm = vpar(iv+1)*HiVfac
+          LoVterm = lh_out%vpar(iv+1)*HiVfac
         endif
-        fe(iv,iipsi,iITR) = fe(iv+1,iipsi,iITR)+(HiVterm + LoVterm)*(Vpar(iv)-Vpar(iv+1))
+        lh_out%fe(iv,iipsi,iITR) = lh_out%fe(iv+1,iipsi,iITR)+(HiVterm + LoVterm)*(lh_out%vpar(iv)-lh_out%vpar(iv+1))
      enddo
  
      do  iv = ivZero + 1, nv-2,  1
-        if(abs(vpar(iv)) .LT. TransVel) then
-          HiVterm = vpar(iv)*LoVfac
+        if(abs(lh_out%vpar(iv)) .LT. TransVel) then
+          HiVterm = lh_out%vpar(iv)*LoVfac
         else
-          HiVterm = vpar(iv)*HiVfac
+          HiVterm = lh_out%vpar(iv)*HiVfac
         endif
-        if(abs(vpar(iv-1)) .LT. TransVel) then
-          LoVterm = vpar(iv-1)*LoVfac
+        if(abs(lh_out%vpar(iv-1)) .LT. TransVel) then
+          LoVterm = lh_out%vpar(iv-1)*LoVfac
         else
-          LoVterm = vpar(iv-1)*HiVfac
+          LoVterm = lh_out%vpar(iv-1)*HiVfac
         endif
-        fe(iv,iipsi,iITR) = fe(iv-1,iipsi,iITR) + (HiVterm+LoVterm)*(Vpar(iv)-Vpar(iv-1))
+        lh_out%fe(iv,iipsi,iITR) = lh_out%fe(iv-1,iipsi,iITR) + (HiVterm+LoVterm)*(lh_out%vpar(iv)-lh_out%vpar(iv-1))
      enddo
      do iv = 3, nv-2
-        if( fe(iv,iipsi,iITR) .LT. REXPMIN ) then
-          fe(iv,iipsi,iITR) = FeNorm(iipsi)*exp(-fe(iv,iipsi,iITR))
+        if( lh_out%fe(iv,iipsi,iITR) .LT. REXPMIN ) then
+          lh_out%fe(iv,iipsi,iITR) = FeNorm(iipsi)*exp(-lh_out%fe(iv,iipsi,iITR))
         else
-          fe(iv,iipsi,iITR) = FeNorm(iipsi) * RsltMin
+          lh_out%fe(iv,iipsi,iITR) = FeNorm(iipsi) * RsltMin
         endif
       enddo
-      fe(1,iipsi,iITR) = 0.0_fp 
-      fe(2,iipsi,iITR) = 0.0_fp 
-      fe(nv-1,iipsi,iITR) = 0.0_fp
-      fe(nv  ,iipsi,iITR) = 0.0_fp 
+      lh_out%fe(1,iipsi,iITR) = 0.0_fp 
+      lh_out%fe(2,iipsi,iITR) = 0.0_fp 
+      lh_out%fe(nv-1,iipsi,iITR) = 0.0_fp
+      lh_out%fe(nv  ,iipsi,iITR) = 0.0_fp 
     endif
 
 end subroutine lscsq_FeMaxw
 ! -----------------------------------------------------------------
 subroutine lscsq_FePrime
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi, nv, nsmoo, dfdv, vpar, qlsm, ivzero
+  use lscsq_mod, only: npsi, nv, nsmoo, qlsm, ivzero
+  use lscsq_mod, only: lh_out
   implicit none
 
   integer :: ips, iv
@@ -364,11 +368,11 @@ subroutine lscsq_FePrime
 
   do ips = 1, npsi
      do iv = 1, nv
-        dfdv(iv,ips,2) = vpar(iv)*dfdv(iv,ips,1)
+        lh_out%dfdv(iv,ips,2) = lh_out%vpar(iv)*lh_out%dfdv(iv,ips,1)
      enddo
   enddo
 
-  call lscsq_smooth(dfdv(1:nv,1:npsi,2), nv, npsi, nsmoo, qlsm)
+  call lscsq_smooth(lh_out%dfdv(1:nv,1:npsi,2), nv, npsi, nsmoo, qlsm)
 
 !     convolve with smoothing function
 !
@@ -380,11 +384,11 @@ subroutine lscsq_FePrime
  
   do ips = 1, npsi
      do iv = 1, ivZero-1
-        dfdv(iv,ips,2) = dfdv(iv,ips,2)/vpar(iv)
+        lh_out%dfdv(iv,ips,2) = lh_out%dfdv(iv,ips,2)/lh_out%vpar(iv)
      enddo        
-     dfdv(ivZero,ips,2) = 0.0_fp
+     lh_out%dfdv(ivZero,ips,2) = 0.0_fp
      do iv = ivZero+1 , nv
-        dfdv(iv,ips,2) = dfdv(iv,ips,2)/vpar(iv)
+        lh_out%dfdv(iv,ips,2) = lh_out%dfdv(iv,ips,2)/lh_out%vpar(iv)
      enddo        
   enddo        
 
@@ -393,8 +397,9 @@ end subroutine lscsq_feprime
 subroutine lscsq_FePrU
   ! Fe Prime Unsmoothed
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: npsi, nv, vpar
-  use lscsq_mod, only: ivzero, fe, dfdv, iitr 
+  use lscsq_mod, only: npsi, nv 
+  use lscsq_mod, only: ivzero, iitr 
+  use lscsq_mod, only: lh_out
   implicit none
 
   integer :: ips, iv
@@ -402,16 +407,16 @@ subroutine lscsq_FePrU
 
   do ips = 1, npsi
      do iv = ivZero+1, nv-1
-        dfdv(iv,ips,1)=(fe(iv+1,ips,iITR)-fe(iv,ips,iITR))/(vpar(iv+1)-vpar(iv))
+        lh_out%dfdv(iv,ips,1)=(lh_out%fe(iv+1,ips,iITR)-lh_out%fe(iv,ips,iITR))/(lh_out%vpar(iv+1)-lh_out%vpar(iv))
      enddo
      ! v grid symmetry make dfdv by looking out to high abs(v) 
      do iv = 2, ivZero-1
-        dfdv(iv,ips,1)=-(fe(iv-1,ips,iITR)-fe(iv,ips,iITR))/(vpar(iv+1)-vpar(iv))
+        lh_out%dfdv(iv,ips,1)=-(lh_out%fe(iv-1,ips,iITR)-lh_out%fe(iv,ips,iITR))/(lh_out%vpar(iv+1)-lh_out%vpar(iv))
      enddo
      ! compute unsmoothed derivative
-     dfdv(ivZero, ips,1) = 0.0_fp
-     dfdv(nv,ips,1) = dfdv(nv-1,ips,1)
-     dfdv(1,ips,1) = dfdv(2,ips,1)
+     lh_out%dfdv(ivZero, ips,1) = 0.0_fp
+     lh_out%dfdv(nv,ips,1) = lh_out%dfdv(nv-1,ips,1)
+     lh_out%dfdv(1,ips,1) = lh_out%dfdv(2,ips,1)
   enddo         
 
 end subroutine lscsq_fePru

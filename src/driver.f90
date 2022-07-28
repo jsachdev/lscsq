@@ -2,7 +2,6 @@ program driver
 
 !  use iso_c_binding, only: fp => c_double, c_int
   use lscsq_mod, only: npsij, lh_inp, lh_coeff, lh_const
-  use lscsq_mod, only: voltlp, Edcvec 
   use lscsq_mod, only: nx, nz, pe2min, wcei2, psivec
   use lscsq_mod, only: zmtocm, zkev2ev, zel, zcm3tom3, me_g, twopi
   use lscsq_mod, only: pe2vec, pi2vec, aelvec, aiovec
@@ -45,7 +44,7 @@ program driver
   ! all arrays with dimension set by the external code (e.g. TRANSP) 
   ! are allocated here
 
-  voltlp = lh_inp%Vloop
+  lh_inp%Edc = lh_inp%Vloop/(twopi*lh_inp%Raxis)
 
   !	--------------------------------------------------------------
 
@@ -69,20 +68,19 @@ program driver
   lh_const%nuNorm =    zcm3tom3*lh_const%nu0/vc**3
   lh_const%DcollNorm = lh_const%nuNorm
 
-  EdcVec(1:npsij) = voltlp(1:npsij)/(twopi*lh_inp%Raxis)
 
-  pe2vec = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne
+  pe2vec = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne   ! electron plasma frequency
   AelVec(1:npsij) = 1.0e-20_fp*lh_const%AelFac*lh_inp%ne(1:npsij)*lh_inp%Te(1:npsij)
-  ! we should sum over ion species, including impurities. However, LH does not
-  ! heat on ions. Take for now only the background species (1 species for test)
+  ! we should sum over ion species, including impurities. 
+  ! Take here the total ion density 
+  ! and the charge and mass of the dominat species, until all other issues have been fixed
   pi2Vec(1:npsij) = 1.0e-20_fp*lh_const%pi2Fac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*mp_Kg/lh_inp%mass
   AioVec(1:npsij) = 1.0e-20_fp*lh_const%AioFac*lh_inp%ni(1:npsij)*(lh_inp%chrg/qe_eV)**2*(mp_Kg/lh_inp%mass)**2*lh_inp%Ti(1:npsij)
 
   wcei2 = lh_const%ceifac*lh_inp%ni(1)/lh_inp%ne(1)*(lh_inp%chrg/qe_eV)**2*mp_kg/lh_inp%mass
   wcei2 = wcei2*lh_inp%B_axis**2
 
-  pe2min = pe2Vec(NpsiJ)
-!  pe2min = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne(npsij)
+  pe2min = 1.0e-20_fp*lh_const%pe2fac*lh_inp%ne(npsij)
 
   call nml2lsc
 
@@ -649,20 +647,19 @@ subroutine lscsq_writecdf
   ierr=nf90_put_var(ncid,vid_teou,lh_out%te)
   ierr=nf90_put_var(ncid,vid_psiou,psiary)
   ierr=nf90_put_var(ncid,vid_Edcou,Edcary)
-  ierr=nf90_put_var(ncid,vid_Edcin,Edcvec)
+  ierr=nf90_put_var(ncid,vid_Edcin,lh_inp%Edc)
   ierr=nf90_put_var(ncid,vid_midou,midary)
 
   ierr=nf90_put_var(ncid,vid_js,js)
   ierr=nf90_put_var(ncid,vid_jsp,jsp)
   ierr=nf90_put_var(ncid,vid_pow,praytot)
   ierr=nf90_put_var(ncid,vid_pql,pqltot)
-  ierr=nf90_put_var(ncid,vid_fe,fe)
+  ierr=nf90_put_var(ncid,vid_fe,lh_out%fe)
   ierr=nf90_put_var(ncid,vid_vth,vtherm)
-  ierr=nf90_put_var(ncid,vid_vel,vpar)
+  ierr=nf90_put_var(ncid,vid_vel,lh_out%vpar)
   ierr=nf90_put_var(ncid,vid_dc,dcoll)
   ierr=nf90_put_var(ncid,vid_nuc,nucoll)
-  ierr=nf90_put_var(ncid,vid_dql,Dql)
-  ierr=nf90_put_var(ncid,vid_nzon,nz_ind)
+  ierr=nf90_put_var(ncid,vid_dql,lh_out%Dql)
 
   ierr=nf90_close(ncid)
 

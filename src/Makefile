@@ -39,20 +39,20 @@ ifneq (,$(findstring ifort, $(FC)))
 	CFLAGS  := -O -w #-mp  #-cxxlib-gcc -gcc-version=333
 	DCFLAGS := -g  #-cxxlib-gcc -gcc-version=333
 
-	FFLAGS  := -g -O3 -w -mcmodel small -restrict -align -debug -fpp
-	DFFLAGS := -g -O0 -w -mcmodel small -restrict -fpp
-else ifneq (,$(findstring nvfortran, $(FC)))
+	FFLAGS  := -g -O3 -w -mcmodel small -restrict -align -debug -fpp -qopenmp
+	DFFLAGS := -g -O3 -w -mcmodel small -restrict -fpp -qopenmp
+else ifneq (,$(findstring pgfortran, $(FC)))
         CFLAGS  := -O
         DCFLAGS := -g
-        FFLAGS  := -g -O3
-        DFFLAGS := -g -pg
+        FFLAGS  := -g -O3 -Kieee -mp -cpp
+        DFFLAGS := -g -O3 -Kieee -pg -mp -cpp
 else ifneq (,$(findstring gfortran, $(FC)))
 	CSPECIAL= -fno-align-commons -fbounds-check -fbacktrace -fPIC -fcheck=pointer
         CFLAGS  := -O
         DCFLAGS := -g
-        FFLAGS  := -g -std=f2003 -O3 -cpp
+        FFLAGS  := -g -std=f2003 -O3 -cpp -fopenmp
         DFFLAGS := -g -cpp -finit-real=zero -fcheck=all -fbacktrace \
-		             -ffpe-trap=invalid -ffpe-summary=invalid
+		             -ffpe-trap=invalid -ffpe-summary=invalid -fopenmp
 else
         CFLAGS  := -O
         DCFLAGS := -g
@@ -69,7 +69,7 @@ endif
 ALL_F := $(subst .f90,.o, $(wildcard *.f90))
 ALL_C := $(subst .c,.o, $(wildcard *.c))
 M_OBJ := driver.o
-OBJECTS := lscsq_mod.o nml2lsc.o fits.o   \
+OBJECTS := lscsq_mod.o lscsq_types_mod.o nml2lsc.o fits.o   \
           grids.o matr.o power.o raystore.o grap.o grapgrd.o ql.o raytrace.o cycle.o fe.o       \
           jrf.o rayini.o wr2tsc.o lscsq_map2D.o lscsq_main.o 
 
@@ -106,7 +106,9 @@ clean:
 
 install:
 	@echo "Installing here $(PREFIX)"
-	@mkdir -p $(PREFIX)/{bin,include,lib}
+	@test -d $(PREFIX)/bin || mkdir -p $(PREFIX)/bin
+	@test -d $(PREFIX)/include || mkdir -p $(PREFIX)/include
+	@test -d $(PREFIX)/lib || mkdir -p $(PREFIX)/lib
 	@cp $(EXE) $(PREFIX)/bin
 	@cp *.mod $(PREFIX)/include
 	@cp lib$(LIBNAME).a $(PREFIX)/lib

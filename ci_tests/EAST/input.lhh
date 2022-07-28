@@ -1,40 +1,36 @@
 &inpsize
 nant = 2,
-nGrps = 5,    ! num of spectrum peaks: num of waveguides if DOBRAM>0 (3) 
-ntors=60,
 npols=1,
 npsi = 30, ! numr of psi shells for power/current dep (10)
 nzones = 1000, ! 4000 number of shell crossings tracked (100) 
 nv = 201,  ! number of v_el/c bins points btw -1 and +1 (199) 
-nth=3,
 nrampup= 11, ! number of steps to ramp up power  
 /
 
 &inpvalue 
+Rant(1)=2.35, Rant(2)=2.35,
+Zant(1)=0.0, Zant(2)=0.0,
+Hant(1)=0.736, Hant(2)=0.776,
 power_inp(1) = 0.50e06, power_inp(2) = 1.50e06
 fghz_ant(1) = 2.45, fghz_ant(2) = 4.6,
-npeaks(1) = 5, npeaks(2) = 3, 
+nth(1)=5, nth(2)=12,
+npeaks(1)=5, npeaks(2)=3, 
+ntors(1,1)=5, ntors(2,1)=25, ntors(3,1)=50, ntors(4,1)=5, ntors(5,1)=25,
+ntors(1,2)=5, ntors(2,2)=50, ntors(3,2)=20, 
 powers_ant(1,1)=0.073,powers_ant(2,1)=0.1633,powers_ant(3,1)=0.5030,powers_ant(4,1)=0.0627,powers_ant(5,1)=0.1580,
 centers_ant(1,1)=11.5, centers_ant(2,1)=3.1, centers_ant(3,1)=2.1, centers_ant(4,1)=-6.32, centers_ant(5,1)=-7.31,
 widths_ant(1,1)=0.58, widths_ant(2,1)=0.58, widths_ant(3,1)=0.58, widths_ant(4,1)=0.58, widths_ant(5,1)=0.58,
 powers_ant(1,2)=0.043, powers_ant(2,2)=0.77, powers_ant(3,2)=0.187,
 centers_ant(1,2)=10.18, centers_ant(2,2)=2.04, centers_ant(3,2)=-6.1,
 widths_ant(1,2)=0.28, widths_ant(2,2)=0.28, widths_ant(3,2)=0.28,
-powers(1) = 0.7185, powers(2) = 0.2815,
-centers(1)= 2.4493, centers(2)= -5.2182, 
-widths(1) = 1.044, widths(2) = 1.044,
-nparmin  = -9.00,  ! left edge of n_parallel peak   
-nparmax  = 13.00,   ! right edge of n_parallel peak  
 /
   
 &inpexprt
 HstpLH = .008,   ! step length in m along pathlength (0.005 for PBXM) 
-nstep = 200000,  ! max steps in following each ray (500) 
+nstep = 10000,  ! max steps in following each ray (500) 
 nsmoo = 9, ! num vel bins for smoothing D_ql (9)  
 nsmw = 3,  ! characteristic width of fun covering NSMOO vs bins (3)
-weghtitr = 0.100 ! .2,
-thet0=0.0,
-dthet=23.0,
+weghtitr = 0.200,
 nflat  = 2,   ! number of points with flat max power
 /
 

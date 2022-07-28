@@ -49,7 +49,7 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, zm3tocm3, zm2tocm2
   use lscsq_mod, only : zcm3tom3, zcm2tom2
-  use lscsq_mod, only: edcary,edcvec
+  use lscsq_mod, only: edcary
   use lscsq_mod, only: IpIntgrl,IrIntgrl,PqIntgrl,PrIntgrl
   use lscsq_mod, only: midary,npsij 
   use lscsq_mod, only: vnormpos,vnormneg
@@ -183,10 +183,10 @@ subroutine lscsq_output(Pelfnd,Jrffnd, Pqlfnd)
   curtscp(1:npsij) = zcm2tom2*curtscp(1:npsij)
 
   do l = 1, NpsiJ
-     if(curtsc(l).eq.0.0_fp .or. dEdcAmnt.eq.0.0_fp .or. EdcVec(l).eq.0.0_fp) then
+     if(curtsc(l).eq.0.0_fp .or. dEdcAmnt.eq.0.0_fp .or. lh_inp%Edc(l).eq.0.0_fp) then
         dlJdlE(l) = 0.0_fp 
      else
-        dlJdlE(l) = (curtscp(l)-curtsc(l))/curtsc(l)*EdcVec(l)/dEdcAmnt
+        dlJdlE(l) = (curtscp(l)-curtsc(l))/curtsc(l)*lh_inp%Edc(l)/dEdcAmnt
      endif
      ! TRANSP REQUEST:  
      dJdE(l) = (curtscp(l)-curtsc(l))/dEdcAmnt
@@ -209,9 +209,9 @@ end subroutine lscsq_output
 !     ------------------------------------------------------------------
 subroutine lscsq_FastFrac
   use iso_c_binding, only : fp => c_double
-  use lscsq_mod, only: vpar, vtherm,fe,ivzero,iitr, dvplus
+  use lscsq_mod, only: vtherm,ivzero,iitr, dvplus
   use lscsq_mod, only: fenorm,FstFracN,FstFracE
-  use lscsq_mod, only: npsi, nv
+  use lscsq_mod, only: npsi, nv, lh_out
   implicit none
 
       INTEGER i,j, jwt
@@ -244,7 +244,7 @@ subroutine lscsq_FastFrac
 !     from the expression  [ 2 + 2( j / 2 ) - j ]  = 1, {j=1,3,5...}
 !                                                  = 2, {j=2,4,6...}
 !
-      duDelV  = abs ( Vpar(IvZero+1) - Vpar(IvZero) )
+      duDelV  = abs ( lh_out%vpar(IvZero+1) - lh_out%vpar(IvZero) )
       RsltMin = exp ( -ExpMax )
       do 20 i = 1, npsi
         duFracN = 0.0_fp 
@@ -256,14 +256,12 @@ subroutine lscsq_FastFrac
         if ( vtherm(i) .GE. duDelV ) then
           do 10 j = 1, nv
             jwt =  ( 2 + 2 * ( j / 2 ) - j )
-!            dumFe  =              fe(j,i,iITR) * wt(jwt) * dvsym(j)
-!            dumV2  = vpar(j)**2 * fe(j,i,iITR) * wt(jwt) * dvsym(j)
-            dumFe  =              fe(j,i,iITR) * wt(jwt) * dvplus(j)
-            dumV2  = vpar(j)**2 * fe(j,i,iITR) * wt(jwt) * dvplus(j)
+            dumFe  =      lh_out%fe(j,i,iITR) * wt(jwt) * dvplus(j)
+            dumV2  = lh_out%vpar(j)**2 * lh_out%fe(j,i,iITR) * wt(jwt) * dvplus(j)
             duFracN = duFracN + dumFe
             duFracE = duFracE + dumV2
 
-            exp1 =  vpar(j)*vpar(j)/(2.0_fp*duVth2)
+            exp1 =  lh_out%vpar(j)*lh_out%vpar(j)/(2.0_fp*duVth2)
             if(exp1 .LT. ExpMax) then
               exp1 = exp( -exp1 )
             else
@@ -271,10 +269,8 @@ subroutine lscsq_FastFrac
             endif
             exp1 = exp1 * duNorm
 !           exp1 = exp( -vpar(j)*vpar(j)/(2.*duVth2) )* duNorm
-!             dumMx  =              exp1 * wt(jwt) * dvsym(j)
-!             dumV2  = vpar(j)**2 * exp1 * wt(jwt) * dvsym(j)
               dumMx  =              exp1 * wt(jwt) * dvplus(j)
-              dumV2  = vpar(j)**2 * exp1 * wt(jwt) * dvplus(j)
+              dumV2  = lh_out%vpar(j)**2 * exp1 * wt(jwt) * dvplus(j)
               duMaxwN = duMaxwN + dumMx
               duMaxwE = duMaxwE + dumV2
  10       continue

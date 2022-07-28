@@ -67,29 +67,22 @@ module lscsq_mod
   integer :: npsi = 40
   integer :: nzones = 2000
   integer :: nv = 199
-  integer :: nth= 19
   integer :: nsmoo=9
   integer :: nsmw=3
   integer :: nrampup= 100 ! number of steps to ramp up power 
   integer :: nflat = 10 
                           ! 0 makes a spectrum out of arbitrary Gaussians
-  integer :: ntors = 60
   integer :: npols = 1
-  integer :: nrays = -1
+  integer :: nrays = 1
   integer :: turnnegs = 0
 
   integer :: i1stcall
  
   integer, dimension(:,:), allocatable :: ind_ray
-  real(fp) :: nparmin = 2.5_fp
-  real(fp) :: nparmax = 5.5_fp
   real(fp) :: npolmin = -1.0_fp
   real(fp) :: npolmax = 1.0_fp
   real(fp) :: hstplh = 0.0_fp
   real(fp) :: weghtitr=0.2_fp
-  real(fp) :: thet0   = 0.0_fp  ! angle of launch 0=> outside midplane, .25=> top
-  real(fp) :: dthet = 0.0_fp
-  real(fp), dimension(:), allocatable :: thgrid
 
   real(fp) :: diffujrf = 0.0_fp
   real(fp) :: prfspred = 0.0_fp
@@ -102,28 +95,31 @@ module lscsq_mod
   real(fp) :: ppwrsum = 0.0_fp
 
   real(fp) :: TotPwr = 0.0_fp
-  real(fp) :: enpar= 0.0_fp   ! n_{\parallel} launched for ray being worked at the moment
-  real(fp) :: enpol=0.0_fp   ! n_{poloidal}  launched for all rays(zero is good enough)
-  real(fp) :: enth =0.0_fp
   real(fp) :: omega=0.0_fp   ! RF frequency (radians/sec)
+  !$OMP THREADPRIVATE(omega)
 
-  real(fp) :: begin=0.0_fp    ! value of path length to begin ray (0 at start)
   real(fp) :: ipsq=0.0_fp     ! \sum_i \omega_{pi}^2 / \omega^2
+  !$OMP THREADPRIVATE(ipsq)
   real(fp) :: ecyc=0.0_fp    ! \omega_{ce} / \omega
+  !$OMP THREADPRIVATE(ecyc)
   real(fp) :: epsq=0.0_fp    ! \omega_{pe}^2 / \omega^2
+  !$OMP THREADPRIVATE(epsq)
   real(fp) :: ecyc2=0.0_fp   ! ecyc^2
+  !$OMP THREADPRIVATE(ecyc2)
   real(fp) :: wcei2=0.0_fp   ! \omega_{ce} \omega_{cH} \sum_i ( n_i Z_i^2 / n_e) m_H/m_i
   real(fp) :: woc2=0.0_fp    ! \omega^2/c^2
+  !$OMP THREADPRIVATE(woc2)
   real(fp) :: woc4=0.0_fp    ! woc2^2
+  !$OMP THREADPRIVATE(woc4)
 
-  integer :: lfast = 0
   integer :: lstop = 0
+  !$OMP THREADPRIVATE(lstop)
   real(fp) :: delpsi=0.0_fp
   real(fp) :: Te=0.0_fp
+  !$OMP THREADPRIVATE(Te)
   real(fp) :: Ne=0.0_fp
   real(fp) :: pe2min = 0.0_fp
 
-! from lscsq_febins
   integer :: ivZero = 1
   integer :: iITR = 1
 
@@ -137,42 +133,69 @@ module lscsq_mod
   real(fp), dimension(neqs) ::  f1=0.0_fp
   real(fp), dimension(neqs) ::  f2=0.0_fp
   real(fp), dimension(neqs) ::  f3=0.0_fp
-  real(fp), dimension(neqs) ::  y1=0.0_fp
-  real(fp), dimension(neqs) ::  y2=0.0_fp
-  real(fp), dimension(neqs) ::  y3=0.0_fp
+  ! real(fp), dimension(neqs) ::  y1=0.0_fp
+  ! real(fp), dimension(neqs) ::  y2=0.0_fp
+  ! real(fp), dimension(neqs) ::  y3=0.0_fp
   real(fp), dimension(neqsp1) :: f=0.0_fp 
   real(fp), dimension(neqsp1) :: y=0.0_fp 
+  !$OMP THREADPRIVATE(f1,f2,f3,f,y)
  
   real(fp) :: d1=0.0_fp
+  !$OMP THREADPRIVATE(d1)
   real(fp) :: d2=0.0_fp
+  !$OMP THREADPRIVATE(d2)
   real(fp) :: d4=0.0_fp
+  !$OMP THREADPRIVATE(d4)
   real(fp) :: denom=0.0_fp
+  !$OMP THREADPRIVATE(denom)
   real(fp) :: DKpar=0.0_fp
+  !$OMP THREADPRIVATE(DKpar)
   real(fp) :: DKper=0.0_fp
+  !$OMP THREADPRIVATE(DKper)
   real(fp) :: wdDdw=0.0_fp
+  !$OMP THREADPRIVATE(wdDdw)
   real(fp) :: dDdkABS=0.0_fp
+  !$OMP THREADPRIVATE(dDdkABS)
   real(fp) :: epQL=0.0_fp
+  !$OMP THREADPRIVATE(epQL)
   real(fp) :: epsL=0.0_fp
+  !$OMP THREADPRIVATE(epsL)
   real(fp) :: epsz=0.0_fp
+  !$OMP THREADPRIVATE(epsz)
  
   real(fp) :: Eper=0.0_fp
+  !$OMP THREADPRIVATE(Eper)
   real(fp) :: Epar=0.0_fp
+  !$OMP THREADPRIVATE(Epar)
   real(fp) :: Exy=0.0_fp
+  !$OMP THREADPRIVATE(Exy)
   real(fp) :: Aion=0.0_fp
+  !$OMP THREADPRIVATE(Aion)
   real(fp) :: Aelc=0.0_fp
+  !$OMP THREADPRIVATE(Aelc)
   real(fp) :: OmEC2=0.0_fp
   real(fp) :: EparI=0.0_fp
+  !$OMP THREADPRIVATE(EparI)
   real(fp) :: EparIK=0.0_fp
  
   real(fp) :: D11er=0.0_fp
+  !$OMP THREADPRIVATE(D11er)
   real(fp) :: D33er=0.0_fp
+  !$OMP THREADPRIVATE(D33er)
   real(fp) :: D12er=0.0_fp
+  !$OMP THREADPRIVATE(D12er)
   real(fp) :: D11ar=0.0_fp
+  !$OMP THREADPRIVATE(D11ar)
   real(fp) :: D33ar=0.0_fp
+  !$OMP THREADPRIVATE(D33ar)
   real(fp) :: D12ar=0.0_fp
+  !$OMP THREADPRIVATE(D12ar)
   real(fp) :: D11w0=0.0_fp
+  !$OMP THREADPRIVATE(D11w0)
   real(fp) :: D33w0=0.0_fp
+  !$OMP THREADPRIVATE(D33w0)
   real(fp) :: D12w0=0.0_fp
+  !$OMP THREADPRIVATE(D12w0)
 
   integer :: DqlBox(4)= 0
   integer :: nsmsym = 0
@@ -187,10 +210,9 @@ module lscsq_mod
 
   real(fp), dimension(:,:), allocatable :: Dcoll, nucoll
   real(fp), dimension(:), allocatable :: qlsm
-  real(fp), dimension(:,:,:), allocatable :: Dql
 
   real(fp), dimension(:), allocatable :: fghz, powers, centers, widths
-  real(fp), dimension(:), allocatable :: fghz_ant, power_inp
+  real(fp), dimension(:), allocatable :: fghz_ant, power_inp, Rant, Zant, Hant
   real(fp), dimension(:,:), allocatable :: powers_ant, centers_ant, widths_ant
   real(fp), dimension(:), allocatable :: pwrlevel, FeCvgAry
   real(fp), dimension(:), allocatable :: printgrl, pqintgrl
@@ -199,16 +221,15 @@ module lscsq_mod
 
   real(fp), dimension(:), allocatable :: wkzr, wkv, wkpsi, wkzx
 
+  integer, dimension(:), allocatable :: nth
   real(fp), dimension(:), allocatable :: ntor, Spec
   real(fp), dimension(:,:), allocatable :: ntor_ant, Spec_ant, npol_ant
   real(fp), dimension(:), allocatable :: npol  
+  integer, dimension(:,:), allocatable :: ntors 
 
-  real(fp), dimension(:), allocatable :: vpar, vtherm, fenorm, VperpSq, &
+  real(fp), dimension(:), allocatable :: vtherm, fenorm, VperpSq, &
                                          dvplus,   &
                                          nu0psi, FstFracN, FstFracE
-
-  real(fp), dimension(:,:,:), allocatable :: fe, dfdv
-
 
   real(fp), allocatable, dimension(:) :: PsiAry,  &
                                   iVlAry, dVol, EdcAry,  &
@@ -235,9 +256,10 @@ module lscsq_mod
 ! from lscsq_raybins
   integer :: ips=0
   integer :: iray=0
-  integer :: izone=0   
+  !$OMP THREADPRIVATE(iray)  
+  integer :: izone=0
+  !$OMP THREADPRIVATE(izone)    
  
-  integer, dimension(:,:), allocatable :: izind, ivind ! , izcind             
   real(fp), dimension(:,:), allocatable :: rofray, zofray, Pofray,        &
                                          nparry, nperry, rtpsry, powrry,&
                                          TimeRy, DistRy, DetrRy,        &
@@ -248,19 +270,19 @@ module lscsq_mod
 
   integer :: iRayTrsi=1
   integer :: iError=0
+  !$OMP THREADPRIVATE(iError)
   integer :: iEndRy=0
 
   integer :: nx = 125
   integer :: nz = 159
   integer :: npsij 
 
-  real(fp), allocatable, dimension(:) :: rho, voltlp, psivec
-
-  integer(c_int), dimension(:), allocatable :: nz_ind, ok_ray
+  real(fp), allocatable, dimension(:) :: rho, psivec
 
   real(fp), allocatable, dimension(:) :: pi2Vec, AioVec, AelVec,           &
-                          pe2Vec, EdcVec, TeeVec
-      REAL(fp), dimension(4) :: pi2Coefs, AioCoefs, AelCoefs, pe2Coefs, RBphiCoefs, TeeCoefs
+                          pe2Vec, TeeVec
+  REAL(fp), dimension(4) :: pi2Coefs, AioCoefs, AelCoefs, pe2Coefs, RBphiCoefs, TeeCoefs
+  !$OMP THREADPRIVATE(pi2Coefs, AioCoefs, AelCoefs, pe2Coefs, RBphiCoefs, TeeCoefs)
 
   type lscsq_set
        integer :: nant
@@ -315,7 +337,6 @@ module lscsq_mod
     integer, dimension(:,:), allocatable :: ivind
     integer, dimension(:), allocatable :: ok_ray
     real(fp), dimension(:), allocatable :: vpar
-    real(fp), dimension(:), allocatable :: freq_ray    
     real(fp), dimension(:,:), allocatable :: dlnPdsK 
     real(fp), dimension(:,:), allocatable :: dlnPdsX
     real(fp), dimension(:,:), allocatable :: ezsq
@@ -348,6 +369,7 @@ module lscsq_mod
     real(fp), dimension(:), allocatable :: ni
     real(fp), dimension(:), allocatable :: ti  
     real(fp), dimension(:), allocatable :: Vloop
+    real(fp), dimension(:), allocatable :: Edc
     real(fp), dimension(:), allocatable :: plflx
     real(fp), dimension(:), allocatable :: dvol  
     real(fp), dimension(:), allocatable :: vol  
@@ -412,13 +434,7 @@ subroutine lscsq_allocrays
   sleave = 0.0_fp
   if(.not.allocated(tleave)) allocate(tleave(nzones+1,nrays))
   tleave = 0.0_fp
-  if (.not.allocated(nz_ind)) allocate(nz_ind(nrays))
-  nz_ind(1:nrays) = 1
-  if (.not.allocated(ok_ray)) allocate(ok_ray(nrays))
-  ok_ray(1:nrays) = 1
 
-  if (.not.allocated(thgrid)) allocate(thgrid(nth))
-  thgrid(1:nth) = 0.0_fp
   if (.not.allocated(Rofray)) allocate(RofRay(nzones,nrays))
   Rofray = 0.0_fp
   if (.not.allocated(Zofray)) allocate(ZofRay(nzones,nrays))
@@ -445,12 +461,8 @@ subroutine lscsq_allocrays
   bthray = 0.0_fp
   if (.not.allocated(bphray)) allocate(bphray(nzones,nrays))
   bphray = 0.0_fp
-  if (.not.allocated(izind)) allocate(izind(nzones,nrays))
-  izind = 0
   if (.not.allocated(rzind)) allocate(rzind(nzones,nrays))
   rzind(1:nzones,1:nrays) = 0.0_fp
-  if (.not.allocated(ivind)) allocate(ivind(nzones,nrays))
-  ivind = 0
   if (.not.allocated(ezsq)) allocate(ezsq(nzones,nrays))
   ezsq = 0.0_fp
   if (.not.allocated(npar)) allocate(npar(nzones,nrays))
@@ -467,41 +479,40 @@ subroutine lscsq_allocrays
   rfudgdmp(1:nzones,1:nrays) = 0.0_fp
 
 
-  if(.not.allocated(ntor_ant)) allocate(ntor_ant(ntors,nant))
-  ntor_ant(1:ntors,1:nant) = 0.0_fp
-  if(.not.allocated(spec_ant)) allocate(spec_ant(ntors,nant))
-  spec_ant(1:ntors,1:nant) = 0.0_fp
-  if(.not.allocated(npol_ant)) allocate(npol_ant(npols,nant))
-  npol_ant(1:npols,1:nant) = 0.0_fp
-  if(.not.allocated(ntor)) allocate(ntor(ntors))
-  ntor(1:ntors) = 0.0_fp
-  if(.not.allocated(spec)) allocate(spec(ntors))
-  spec(1:ntors) = 0.0_fp
-  if(.not.allocated(npol)) allocate(npol(npols))
-  npol(1:npols) = 0.0_fp
-
 
   if(.not.allocated(lh_out%psi)) allocate(lh_out%psi(npsi))
   if(.not.allocated(lh_out%ne)) allocate(lh_out%ne(npsi))
   if(.not.allocated(lh_out%Te)) allocate(lh_out%Te(npsi))
+  if(.not.allocated(lh_out%Edc)) allocate(lh_out%Edc(npsi))
   if(.not.allocated(lh_out%zbar)) allocate(lh_out%zbar(npsi))
   if(.not.allocated(lh_out%logL)) allocate(lh_out%logL(npsi))
   if(.not.allocated(lh_out%betZ)) allocate(lh_out%betZ(npsi))
   if(.not.allocated(lh_out%dlnPdsK)) allocate(lh_out%dlnPdsK(nzones,nrays))
   if(.not.allocated(lh_out%dlnPdsX)) allocate(lh_out%dlnPdsX(nzones,nrays))
   if(.not.allocated(lh_out%ezsq)) allocate(lh_out%ezsq(nzones,nrays))
-  if(.not.allocated(lh_out%izind)) allocate(lh_out%izind(nzones,nrays))
-  if(.not.allocated(lh_out%ivind)) allocate(lh_out%ivind(nzones,nrays))
-  if(.not.allocated(lh_out%ok_ray)) allocate(lh_out%ok_ray(nrays))
 
   if(.not.allocated(lh_out%fe)) allocate(lh_out%fe(nv,npsi,2))
+  lh_out%fe(1:nv,1:npsi,1:2) = 0.0_fp
   if(.not.allocated(lh_out%dfdv)) allocate(lh_out%dfdv(nv,npsi,2))
+  lh_out%dfdv(1:nv,1:npsi,1:2) = 0.0_fp
   if(.not.allocated(lh_out%dql)) allocate(lh_out%dql(nv,npsi,2))
+  lh_out%dql(1:nv,1:npsi,1:2) = 0.0_fp
+  if(.not.allocated(lh_out%izind)) allocate(lh_out%izind(nzones,nrays))
+  lh_out%izind=0
+  if(.not.allocated(lh_out%ivind)) allocate(lh_out%ivind(nzones,nrays))
+  lh_out%ivind=0
+  if(.not.allocated(lh_out%ok_ray)) allocate(lh_out%ok_ray(nrays))
+  lh_out%ok_ray(1:nrays) = 1
   if(.not.allocated(lh_out%vpar)) allocate(lh_out%vpar(nv))
+  lh_out%vpar = 0.0_fp
 
 end subroutine lscsq_allocrays
 
 subroutine lscsq_alloc
+
+  implicit none
+
+  integer :: np
 
   if(.not.allocated(psiary)) allocate(psiary(npsi))
   psiary(1:npsi) = 0.0_fp
@@ -516,13 +527,9 @@ subroutine lscsq_alloc
 
   if(.not.allocated(qlsm)) allocate(qlsm(nv))
   qlsm(1:nv) = 0.0_fp
-  if(.not.allocated(dql)) allocate(dql(nv,npsi,2))
   if(.not.allocated(dcoll)) allocate(dcoll(nv,npsi))
   if(.not.allocated(nucoll)) allocate(nucoll(nv,npsi))
 
-
-  if(.not.allocated(vpar)) allocate(vpar(nv))
-  vpar(1:nv) = 0.0_fp  
   if(.not.allocated(dvplus)) allocate(dvplus(nv))
   if(.not.allocated(vtherm)) allocate(vtherm(npsi))
   vtherm(1:npsi) = 0.0_fp
@@ -535,29 +542,7 @@ subroutine lscsq_alloc
   fstfrace(1:npsi) = 0.0_fp  
   if(.not.allocated(vperpsq)) allocate(vperpsq(npsi))
   vperpsq(1:npsi) = 0.0_fp  
-  if(.not.allocated(fe)) allocate(fe(nv,npsi,2))
-  if(.not.allocated(dfdv)) allocate(dfdv(nv,npsi,2))
 
-
-  if(.not.allocated(fghz_ant)) allocate(fghz_ant(nant))
-  fghz_ant = 0.0_fp
-  if(.not.allocated(power_inp)) allocate(power_inp(nant))
-  power_inp = 0.0_fp
-  if(.not.allocated(npeaks)) allocate(npeaks(nant))
-  npeaks = 0
-  if(.not.allocated(powers_ant)) allocate(powers_ant(ngrps,nant))
-  powers_ant = 0.0_fp
-  if(.not.allocated(centers_ant)) allocate(centers_ant(ngrps,nant))
-  centers_ant = 0.0_fp
-  if(.not.allocated(widths_ant)) allocate(widths_ant(ngrps,nant))
-  widths_ant = 0.0_fp
-
-  if(.not.allocated(powers)) allocate(powers(ngrps))
-  powers = 0.0_fp
-  if(.not.allocated(centers)) allocate(centers(ngrps))
-  centers = 0.0_fp
-  if(.not.allocated(widths)) allocate(widths(ngrps))
-  widths = 0.0_fp
 
   if(.not.allocated(pray)) allocate(pray(nv,npsi))
   if(.not.allocated(pql)) allocate(pql(nv,npsi))
@@ -639,8 +624,6 @@ subroutine alloc_profs
   if(.not.allocated(aiovec)) allocate(aiovec(npsij))
   if(.not.allocated(aelvec)) allocate(aelvec(npsij))
   if(.not.allocated(pe2vec)) allocate(pe2vec(npsij))
-  if(.not.allocated(edcvec)) allocate(edcvec(npsij))
-  if(.not.allocated(voltlp)) allocate(voltlp(npsij))
 
   if(.not.allocated(powtsc)) allocate(powtsc(npsij))
   if(.not.allocated(curtsc)) allocate(curtsc(npsij))
@@ -657,7 +640,6 @@ subroutine dealloc_profs
 implicit none
 
   deallocate(pi2vec,aiovec,aelvec,pe2vec)
-  deallocate(edcvec,voltlp)
   deallocate(powtsc,curtsc,dJdE,dlJdlE)
 
 

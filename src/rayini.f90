@@ -1,4 +1,4 @@
-SUBROUTINE lscsq_RayIni(RayIniErr)
+SUBROUTINE lscsq_RayIni(rstart, zstart, enpar, enpol, RayIniErr)
 !
 !     Integration is in coords  R     Z     Phi
 !     Starting uses             Rad   Pol   Phi (no B in Rad direction)
@@ -16,22 +16,22 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
 
   use iso_c_binding, only : fp => c_double
   use lscsq_mod, only : pi, twopi, vc, deg2rad
-  use lscsq_mod, only: y,Epar,Eper,d1,d2,d4,woc2,woc4
-  use lscsq_mod, only: lfast, begin
-  use lscsq_mod, only: pe2min, Exy, izind, rzind
-  use lscsq_mod, only: enpar, enpol
-  use lscsq_mod, only: thet0, enth, ngrps, fghz, omega
-  use lscsq_mod, only: pofray, nparry, nperry, vpar, lstop
+  use lscsq_mod, only: y, Epar,Eper,d1,d2,d4,woc2,woc4
+  use lscsq_mod, only: pe2min, Exy, rzind
+  use lscsq_mod, only: ngrps, fghz, omega
+  use lscsq_mod, only: pofray, nparry, nperry, lstop
   use lscsq_mod, only: timery, neofry, rtPsRy, Bthray, Bphray
   use lscsq_mod, only: delpsi,Powrry,RofRay,zofray
   use lscsq_mod, only: Ezsq,distry,detrry
   use lscsq_mod, only: iray, nzones, npsij 
   use lscsq_mod, only: sleave, tleave, senter, tenter
-  use lscsq_mod, only: lh_const !, lh_out
-  use lscsq_mod, only: lh_inp
+  use lscsq_mod, only: lh_const 
+  use lscsq_mod, only: lh_inp, lh_out
 
   implicit none
 
+  real(fp), intent(in) :: enpar, enpol
+  real(fp), intent(in) :: rstart, zstart
   integer, intent(out) :: RayIniErr
   integer :: izindold
   real(fp) :: rzindold
@@ -47,38 +47,36 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
               det, fast,plas,Qpar,Sig,slow,try,                          &
               zi1,zi2,zi3,zr1,zr2,zr3, discrimt
   real(fp) :: CosT,drad,rad,rstar,SinT,t 
-  real(fp) :: SEARCHINCR = 5.0e-03_fp
+  real(fp), parameter :: SEARCHINCR = 5.0e-03_fp
 
   real(fp):: RzindNew
 
   real(fp) :: re41
   real(fp) :: Btot, Bphi 
   real(fp) :: Kpar, Kper, kper2 
+  integer :: lfast = 0
 
-  T = enth * deg2rad    
-  
   RayIniErr = 0
-  Rad = lh_inp%Rmax-lh_inp%Raxis
-  If ( Cos(T) .LT. 0.0_fp ) Rad=lh_inp%Raxis-lh_inp%Rmin
-  CosT = Abs(Cos(T))+1.0e-20_fp
-  SinT = Abs(Sin(T))+1.0e-20_fp
-  Rad  = min(Rad/CosT, lh_inp%Zmax/SinT)
-  rstar= -SEARCHINCR
-  drad = abs(rstar)
+
+  rad = rstart        
+  z   = zstart          
+  ! Since we do not have a SOL model yet, start search from the separatrix
+  if (rad.gt.lh_inp%Rmax) rad=lh_inp%Rmax
+  if (rad.gt.lh_inp%Raxis) drad = searchincr
+ 
+  if (rad.lt.lh_inp%Rmin) rad=lh_inp%Rmin
+  if (rad.lt.lh_inp%Raxis) drad = -searchincr
+
+  ! set initial condition on ray  
+  Kpol = omega*enpol/vc
+  Ktor = omega*enpar/vc
 
 5     do I=1,10000
      Rad = Rad - drad
-     r    = lh_inp%Raxis + Rad*Cos(T)
-     z    =        Rad*Sin(T)
-     Kpol = omega*enpol/vc
-     Ktor = omega*enpar/vc
-     if (enpar.eq.0.0_fp) then
-        RayIniErr = 2
-        CALL lscsq_LSCwarn(' enpar == 0 in RayIni ')
-        return
-     endif
-     CALL lscsq_plasma2d(r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
+     r = rad
+     z = z
 
+     CALL lscsq_plasma2d(r,z, psi,Br,Bz,RBphi,omc,Tee,pe2,pi2,aio,ael)
      If (pe2.LE.pe2min) cycle    
 
       Bpol2= Br*Br + Bz*Bz
@@ -88,7 +86,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       Sig  = (r-lh_inp%Raxis)*Bz - z*Br
       If (Sig.LT.0.0_fp) Bpol = -Bpol
       Kpar2 = (Kpol*Bpol+Ktor*RBphi/R)**2/Btot2
-      call lscsq_Eps( r, z, Kpar2, 0.0_fp)
+      CALL lscsq_eps (0.0_fp, omc, pe2, pi2, tee, aio, ael) 
 
 10    Azplr(4) = -(aio/fghz(iray)**4 + ael)
       Azplr(3) =  Eper
@@ -114,9 +112,9 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
       zr1 = REAL(zc(1),kind=fp)
       zr2 = REAL(zc(2),kind=fp)
       zr3 = REAL(zc(3),kind=fp)
-      ! zi1 = AIMAG(zc(1))
-      ! zi2 = AIMAG(zc(2))
-      ! zi3 = AIMAG(zc(3))
+      zi1 = AIMAG(zc(1))
+      zi2 = AIMAG(zc(2))
+      zi3 = AIMAG(zc(3))
 
 !     The normal case is that all roots are real, and we see if we can start.
 22    continue
@@ -151,12 +149,10 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   y(5)  =  (-Krad*Br + Kpol*Bz ) / Bpol
   y(6)  =  Ktor*r
   y(7)  =  0.0_fp
-  ! to begin the time as fn of distance
-  y(8) = begin
+  y(8) = 0.0_fp 
   det = lscsq_DispRela(y(1),y(2),y(4),y(5),y(6))
 
-  call lscsq_ftion(DummyEr)
-!     only to initialize dkper & wdddw for damping calculation
+  call lscsq_ftion(DummyEr) ! initialize dkper & wdddw for damping calculation
 
   Kper=sqrt(abs(Y(4)**2+Y(5)**2+(Y(6)/Y(1))**2-Kpar2))
 
@@ -164,7 +160,7 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   RE41 = RzindOld
   IzindOld = int(RE41)
  
-  izind(1,iray)  = IzindOld
+  lh_out%izind(1,iray) = IzindOld
   rzind(1,iray)  = RzindOld
   PowrRy(1,iray) = 1.0_fp
   RofRay(1,iray) = y(1)
@@ -181,6 +177,8 @@ SUBROUTINE lscsq_RayIni(RayIniErr)
   DetrRy(1,iray) = det/max(abs(d1),abs(d2),abs(d4))
   tenter(1,iray) = y(7)
   senter(1,iray) = y(8)
+!      write(*,*) '1+wp2/wc2=',kpar2/woc2,1.0+pe2/(omc*omc)
+!      write(*,*) 'ratio=',(kpar2/woc2)/(1.0+pe2/(omc*omc))
 
 end subroutine lscsq_rayini
 !                                                                      |
@@ -296,7 +294,7 @@ subroutine lscsq_zrootsnr ( coef, degree, roots, polish )
 !     if the roots will be subsequently polished by other means.
 !     Ref: Numerical Recipes in Fortran, page 265.
 !
-      INTEGER degree, i, j, jj, polish
+  INTEGER degree, i, j, jj, polish
   integer, parameter :: maxdegre=101
   real(fp) :: epsilon = 1.0e-6_fp
   complex(fp) :: coef(degree+1), x, b, c, roots(degree), defl(MAXDEGRE)

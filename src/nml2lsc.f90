@@ -6,16 +6,16 @@ subroutine nml2lsc
   use lscsq_mod, only: nant,fghz, ntors, npols, nrays, nGrps,    &
               npeaks, centers_ant, widths_ant, powers_ant,     &
               fghz_ant, &
-              nparmax,  nparmin,  npolmin,  npolmax,           &
+              npolmin,  npolmax,           &
               centers, widths, powers,     &
-              power_inp,                     &
+              power_inp, Rant, Zant, Hant,                     &
               DiffuJrf, PrfSpred
   use lscsq_mod, only:  HstpLH,  nstep,  npsi,   nzones,         &
               nv,    nsmoo,     nsmw,                          &
               nRampUp,    nFlat, WeghtItr,                     &
               TailTeps, TailPeps, TailNeps,                    &
               TurnNegs,                              &
-              thet0, dthet, nth
+              nth
  
   use lscsq_mod, only: lscsq_par
   use lscsq_mod, only: lscsq_alloc, lscsq_allocrays
@@ -24,7 +24,7 @@ subroutine nml2lsc
 
   character(len=200) :: zfile='input.lhh'
   logical :: exist
-  integer :: i, i1, i2
+  integer :: i, j, i1, i2
   real(fp) :: tmpdum
 
 ! read first only the number of antennae and the number of peaks/groups
@@ -33,82 +33,54 @@ subroutine nml2lsc
 ! arrays are deallocated at the end, before exiting
 
   namelist /inpsize/                                            &
-              ntors, npols, ngrps,                      &
-              npsi, nzones, nv, nth, nrampup, nant
+              npols, npsi, nzones, nv, nrampup, nant
 
   namelist /inpvalue/                                           &
-              nparmax, nparmin, npolmin, npolmax,         &
+              ntors, nth, npolmin, npolmax,         &
               centers, widths, powers,       &
               DiffuJrf, PrfSpred, npeaks,               &
-              fghz_ant,               &
+              fghz_ant,Rant,Zant,Hant,               &
               centers_ant, widths_ant, powers_ant,power_inp
 
   namelist /inpexprt/                                           &
               HstpLH, nstep, nsmoo, nsmw,                       &
               nFlat, WeghtItr,                                  &
               TailTeps, TailPeps, TailNeps,                     &
-              TurnNegs,                               &
-              thet0, dthet 
+              TurnNegs                               
                                                                         
                                                                         
   inquire(file=zfile, exist=exist)
   if (exist) then
      open(72, file=zfile, status="old", action="read")
      read(72, nml=inpsize)
-     call lscsq_checkdim
+     call alloc_nant
      call lscsq_alloc
-     call lscsq_allocrays
      read(72, nml=inpvalue)
+     call lscsq_checkdim
+!     call alloc_npeaks
+     call lscsq_allocrays
      read(72, nml=inpexprt)
      close(72)
   else
      write(*,*) 'template not found'
   endif
 
-  fghz_ant = 1.0e-9*lh_inp%freqlh
+!  fghz_ant = 1.0e-9*lh_inp%freqlh
   power_inp= lh_inp%powerlh
   do i=1,nant
      ! check that normalizations add to one
      powers_ant(1:npeaks(i),i)=powers_ant(1:npeaks(i),i)/sum(powers_ant(:,i))
-   enddo
-
-  do i=1,nant
-     i1 = 1+(i-1)*ntors*npols*nth
-     i2 = i*ntors*npols*nth
-     fghz(i1:i2) = fghz_ant(i)
   enddo
- 
-  if (DiffuJrf .LT. 0.0_fp) DiffuJrf = 0.0_fp
-  if (PrfSpred.LT.0.0_fp .or. (DiffuJrf.EQ.0.0_fp .and. PrfSpred.GT.0.0_fp)) PrfSpred = 0.0_fp
-  if (PrfSpred.GT.1.0_fp)  PrfSpred = 1.0_fp
-  if (nparmin.GE.nparmax) then
-     tmpdum = nparmax
-     nparmax = nparmin+1.0e-3_fp
-     nparmin = tmpdum -1.0e-3_fp
-     CALL lscsq_LSCwarn(' nparmin/max reversed')
-  endif
 
-  ! check that nth is an odd number  
-  if (2*(nth/2).EQ.nth) then
-     CALL lscsq_LSCwarn (' require ODD nth ')
-     nth = nth-1
-  endif
-
-  ! check that nv is an odd number  
-  if (2*(nv/2).EQ.nv) then
-     CALL lscsq_LSCwarn (' require ODD nv ')
-     nv = nv-1
-  endif
+!  if (DiffuJrf .LT. 0.0_fp) DiffuJrf = 0.0_fp
+!  if (PrfSpred.LT.0.0_fp .or. (DiffuJrf.EQ.0.0_fp .and. PrfSpred.GT.0.0_fp)) PrfSpred = 0.0_fp
+!  if (PrfSpred.GT.1.0_fp)  PrfSpred = 1.0_fp
 
   if ( nsmoo.GT.nv/3 .or. nsmoo.GT.nzones/3 ) then
      CALL lscsq_LSCwarn (' nsmoo set to min(nv,nzones)/3 ')
      nsmoo = min(nv, nzones) / 3
   endif
  
-  if(mod(nsmoo, 2) .EQ. 0) then
-     CALL lscsq_LSCwarn (' nsmoo MUST BE ODD ')
-     nsmoo = abs(nsmoo-1)
-  endif
   if ( nsmw .LT. nsmoo/8) CALL lscsq_LSCwarn (' nsmoo-width seems too SMALL ')
   if ( nsmw .GE. nsmoo) CALL lscsq_LSCwarn (' nsmoo-width seems too LARGE ')
   if ( WeghtItr .GT. 1.0_fp .or. WeghtItr .LT. 0.0_fp ) then
@@ -133,7 +105,6 @@ subroutine nml2lsc
      TailPeps = 0.0_fp
   endif
 
-
 ! fmp - need to define types and populate
 
 contains
@@ -143,40 +114,125 @@ subroutine lscsq_checkdim
   use lscsq_mod, only: ind_ray
   implicit none
 
-  integer :: itor, ipol, ith, ir, iant, i1, i2
+  integer :: itor, ipol, ith, nt, ir, iant, ipk, npk, i1, i2
 
   ! The if-else-if sequence below is to maintain compatibility w.
   ! old usage npols=1,ntors=nrays, ntors not explicitly used;
   ! IF ntors&nrays not given then use NTORDIM
-  if (npols.LT.1) npols = 1
-  if (ntors.LT.1) ntors = 1
-  if (nth.LT.1) nth = 1
+!  if (npols.LT.1) npols = 1
+!  if (nth.LT.1) nth = 1
   
-  nrays = ntors*npols*nth*nant
+  nrays = 0
+  do iant=1,nant
+     nrays = nrays+npols*nth(iant)*sum(ntors(:,iant))
+  enddo
   ! define index for ntor and npol for each ray
   ! This is done to enable parallelization of the code rather than incrementing
   ! the rays indicator one by one in a loop.
-  ! with multi-frequency code, this array needs to be extended to index all
-  ! antennae
-  if (.not.allocated(ind_ray)) allocate(ind_ray(4,nrays))
+  if (.not.allocated(ind_ray)) allocate(ind_ray(5,nrays))
   if (.not.allocated(fghz)) allocate(fghz(nrays))
 
+  fghz_ant = 1.0e-9*lh_inp%freqlh
   ir = 1
   do iant=1,nant
-    do ith=1,nth
-      do itor = 1,ntors
+    npk = npeaks(iant)
+    nt = nth(iant)
+    do ith=1,nt
+      do ipk=1,npk
         do ipol = 1,npols
-           ind_ray(1,ir) = itor 
-           ind_ray(2,ir) = ipol 
-           ind_ray(3,ir) = ith 
-           ind_ray(4,ir) = iant
-           ir = ir+1
+          do itor = 1,ntors(ipk,iant)
+             ind_ray(1,ir) = itor 
+             ind_ray(2,ir) = ipol 
+             ind_ray(3,ir) = ipk 
+             ind_ray(4,ir) = ith 
+             ind_ray(5,ir) = iant
+             fghz(ir) = fghz_ant(iant)
+             ir = ir+1
+          enddo
         enddo
       enddo
     enddo
   enddo
 
 end subroutine lscsq_checkdim
+
+!-----------------------------------------------
+
+subroutine alloc_nant
+
+  use lscsq_mod, only: Rant, Zant, Hant, nant, ntors, npols, nth
+  use lscsq_mod, only: fghz_ant, power_inp, npeaks
+  use lscsq_mod, only: powers_ant, centers_ant, widths_ant
+  use lscsq_mod, only: ntor_ant, spec_ant, npol_ant
+  use lscsq_mod, only: ntor, npol, Spec
+
+  implicit none
+
+  integer :: np, nt
+
+
+  if(.not.allocated(Rant)) allocate(Rant(nant))
+  Rant = 0.0_fp
+  if(.not.allocated(Zant)) allocate(Zant(nant))
+  Zant = 0.0_fp
+  if(.not.allocated(Hant)) allocate(Hant(nant))
+  Hant = 0.0_fp
+  if(.not.allocated(fghz_ant)) allocate(fghz_ant(nant))
+  fghz_ant = 0.0_fp
+  if(.not.allocated(power_inp)) allocate(power_inp(nant))
+  power_inp = 0.0_fp
+  if(.not.allocated(nth)) allocate(nth(nant))
+  nth = 0
+  if(.not.allocated(npeaks)) allocate(npeaks(nant))
+  npeaks = 0
+
+  np = 10 !  placeholder    
+  if(.not.allocated(powers_ant)) allocate(powers_ant(np,nant))
+  powers_ant = 0.0_fp
+  if(.not.allocated(centers_ant)) allocate(centers_ant(np,nant))
+  centers_ant = 0.0_fp
+  if(.not.allocated(widths_ant)) allocate(widths_ant(np,nant))
+  widths_ant = 0.0_fp
+  if (.not.allocated(ntors)) allocate(ntors(np,nant)) 
+  ntors = 0
+
+  if(.not.allocated(npol)) allocate(npol(npols))
+  npol(1:npols) = 0.0_fp
+
+end subroutine alloc_nant
+
+!------------------------------------------
+subroutine alloc_npeaks
+
+  use pl_types 
+  implicit none
+
+  type(ray_init), dimension(:,:), allocatable :: spec_ini  
+
+  integer :: i, j, nt, np
+
+  np = maxval(npeaks)
+  if(.not.allocated(spec_ini)) allocate(spec_ini(np,nant))
+
+  do i=1,nant ! test only 1 antenna for now
+     do j=1,np
+        spec_ini(j,i)%spec = 0.0_fp
+        spec_ini(j,i)%ntor = 0.0_fp
+        spec_ini(j,i)%ntors = 0
+     enddo
+!     do j=1,npeaks(i)
+!        nt = ntors(j,i)
+!        allocate(spec_ini(j,i)%spec(nt))
+!        spec_ini(j,i)%spec = 0.0_fp
+!        allocate(spec_ini(j,i)%ntor(nt))
+!        spec_ini(j,i)%ntor = 0.0_fp
+!        spec_ini(j,i)%ntors = ntors(j,i)
+!     enddo
+  enddo
+
+end subroutine alloc_npeaks
+!------------------------------------------
+
 
 
 
