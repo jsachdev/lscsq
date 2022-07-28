@@ -10,4 +10,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Check major minor patch
-        run: !(contains(github.event.issue.labels.*.name, 'major') && contains(github.event.issue.labels.*.name, 'minor') && contains(github.event.issue.labels.*.name, 'patch'))
+        if: contains(github.event.issue.labels.*.name, 'major') && contains(github.event.issue.labels.*.name, 'minor') && contains(github.event.issue.labels.*.name, 'patch')
+        run: exit 1
