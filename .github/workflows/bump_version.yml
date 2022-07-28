@@ -1,0 +1,23 @@
+name: lscsq CI
+
+on:
+  pull_request:
+    types: closed
+
+jobs:
+  bump_major:
+    if: ${{ github.event.label.name == 'major' }}
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: |
+        echo "Major release"
+  bump_major:
+    if: ${{ github.event.label.name == 'major' }}
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: |
+        echo "Major release"
